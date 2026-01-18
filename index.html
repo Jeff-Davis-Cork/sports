@@ -144,4 +144,68 @@
 
     function filterChannels() {
         const query = document.getElementById('search-bar').value.toLowerCase();
-        renderGrid(allChan
+        renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(query)));
+    }
+
+    function selectChannel(id, name) {
+        selectedID = id;
+        document.getElementById('target-name').innerText = name;
+        showScreen('source-screen');
+        const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
+        document.getElementById('source-options').innerHTML = sources.map(s => `
+            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:15px; border-radius:10px; background:#161e35; color:white; border:1px solid #38bdf8; cursor:pointer;" onclick="startAutomatedCleaning('${s}')">SOURCE ${s.toUpperCase()}</button>
+        `).join('');
+    }
+
+    function startAutomatedCleaning(path) {
+        showScreen('player-screen');
+        const shield = document.getElementById('click-shield');
+        const bar = document.getElementById('progress-bar');
+        const status = document.getElementById('shield-status');
+        const ui = document.getElementById('shield-ui');
+        
+        shield.classList.remove('unlocked');
+        shield.style.pointerEvents = "auto";
+        ui.classList.remove('hidden');
+        bar.style.width = "0%";
+        
+        const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
+        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+
+        let step = 0;
+        const interval = setInterval(() => {
+            step++;
+            bar.style.width = (step * 2) + "%";
+            status.innerText = `Clearing: ${step}/50`;
+            
+            if (step >= 50) {
+                clearInterval(interval);
+                shield.classList.add('unlocked');
+                ui.classList.add('hidden');
+            }
+        }, 70); 
+    }
+
+    function manualFlicker() {
+        const shield = document.getElementById('click-shield');
+        // Temporarily allow click through to play/unmute/maximize video
+        shield.style.pointerEvents = "none";
+        setTimeout(() => {
+            shield.style.pointerEvents = "auto";
+        }, 250);
+    }
+
+    function closePlayer() {
+        document.getElementById('iframe-container').innerHTML = "";
+        showScreen('source-screen');
+    }
+
+    function showScreen(id) {
+        ['login-screen', 'list-screen', 'source-screen', 'player-screen'].forEach(s => {
+            document.getElementById(s).classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
