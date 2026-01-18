@@ -12,23 +12,21 @@
         .container { max-width: 1100px; margin: 0 auto; }
         h1 { color: var(--accent); margin-bottom: 20px; }
         input { width: 100%; max-width: 400px; padding: 14px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 10px; font-size: 18px; outline: none; }
-        #search-bar { max-width: 100%; width: 100%; border: 2px solid var(--accent); box-sizing: border-box; }
-
+        
         button { padding: 14px 28px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
         .back-btn { background: #475569; color: white; margin: 10px; }
 
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: var(--card); padding: 25px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; height: 50px; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: 0.2s; }
-        .card:hover { border-color: var(--accent); transform: scale(1.03); }
+        .card { background: var(--card); padding: 25px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; height: 50px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
         /* PLAYER AREA */
-        #player-wrapper { position: relative; width: 100%; height: 82vh; background: #000; border-radius: 15px; overflow: hidden; margin-top: 10px; }
+        #player-wrapper { position: relative; width: 100%; height: 85vh; background: #000; border-radius: 15px; overflow: hidden; margin-top: 10px; }
         
-        /* THE CLICK-CAPTURE SHIELD */
+        /* THE AUTOMATED SHIELD */
         #click-shield {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 99999; /* Always on top */
+            z-index: 99999;
             background: rgba(0,0,0,0.95);
             display: flex;
             flex-direction: column;
@@ -36,20 +34,25 @@
             justify-content: center;
             cursor: pointer;
         }
+        #click-shield.unlocked { background: transparent !important; }
 
-        /* State after 35 clicks: Invisible but still there blocking popups */
-        #click-shield.active-guard {
-            background: rgba(0,0,0,0) !important;
+        /* FLICKER HOTSPOTS (Unmute and Maximize) */
+        .hotspot {
+            position: absolute;
+            width: 80px; height: 80px;
+            z-index: 100000;
+            background: rgba(56, 189, 248, 0.1); /* Subtle hint of where buttons are */
+            border: 1px dashed var(--accent);
+            display: none;
+            cursor: pointer;
         }
+        .unmute-zone { top: 10px; right: 10px; }
+        .max-zone { bottom: 10px; right: 10px; }
 
         iframe { width: 100%; height: 100%; border: none; }
         
-        #ad-indicator { 
-            position: absolute; bottom: 10px; right: 10px; 
-            background: rgba(0,0,0,0.7); padding: 5px 10px; 
-            border-radius: 5px; font-size: 12px; color: var(--accent);
-            pointer-events: none;
-        }
+        #progress-container { width: 300px; height: 10px; background: #334155; border-radius: 5px; margin-top: 20px; overflow: hidden; }
+        #progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
     </style>
 </head>
 <body>
@@ -66,18 +69,14 @@
     <!-- 2. Channel List -->
     <div id="list-screen" class="hidden">
         <h1>Jeff's Channels</h1>
-        <input type="text" id="search-bar" placeholder="🔍 Search through channels..." onkeyup="filterChannels()">
+        <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box;">
         <div id="status-area"></div>
-        <div id="fallback-box" class="hidden">
-            <textarea id="manual-html" rows="3" placeholder="Paste page source code here..."></textarea><br>
-            <button onclick="processHTML(document.getElementById('manual-html').value)">Load Data</button>
-        </div>
         <div id="channel-grid" class="grid"></div>
     </div>
 
     <!-- 3. Source Selection -->
     <div id="source-screen" class="hidden">
-        <button class="back-btn" onclick="showScreen('list-screen')">← Back to Channels</button>
+        <button class="back-btn" onclick="showScreen('list-screen')">← Back</button>
         <h2 id="target-name" style="color: var(--accent);"></h2>
         <div id="source-options"></div>
     </div>
@@ -86,15 +85,19 @@
     <div id="player-screen" class="hidden">
         <button class="back-btn" onclick="closePlayer()">← Exit Player</button>
         <div id="player-wrapper">
-            <!-- The Click Shield -->
-            <div id="click-shield" onclick="handleShieldClick()">
+            <!-- Automated Shield -->
+            <div id="click-shield" onclick="manualFlicker()">
                 <div id="shield-ui">
-                    <h2 id="shield-text">Click 35 times to clear ads</h2>
-                    <h1 id="shield-count" style="font-size: 5em; margin: 0; color: var(--accent);">0</h1>
-                    <p>Security Bypass Mode</p>
+                    <h2 id="shield-text">Jeff's Security Bypass</h2>
+                    <div id="progress-container"><div id="progress-bar"></div></div>
+                    <p id="shield-status">Clearing 50 hidden ads...</p>
                 </div>
             </div>
-            <div id="ad-indicator" class="hidden">POPUP PROTECTION ACTIVE</div>
+
+            <!-- Flicker Hotspots -->
+            <div id="unmute-btn" class="hotspot unmute-zone" onclick="manualFlicker()">🔊</div>
+            <div id="max-btn" class="hotspot max-zone" onclick="manualFlicker()">⤢</div>
+
             <div id="iframe-container" style="height: 100%;"></div>
         </div>
     </div>
@@ -102,28 +105,22 @@
 
 <script>
     const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
-    let selectedID = "", allChannels = [], clickCount = 0;
-    const REQ_CLICKS = 5;
+    let selectedID = "", allChannels = [];
 
     function checkPassword() {
-        if (document.getElementById('pass-input').value === CONFIG.PASS) {
+        if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
             loadChannels();
-        } else { alert("Incorrect password, Jeff!"); }
+        } else { alert("Wrong password, Jeff!"); }
     }
 
     async function loadChannels() {
-        const status = document.getElementById('status-area');
-        status.innerHTML = "Fetching channels...";
         const proxy = `https://corsproxy.io/?${encodeURIComponent('https://' + CONFIG.DOMAIN + '/24-7-channels.php')}`;
         try {
             const resp = await fetch(proxy);
             const html = await resp.text();
             processHTML(html);
-        } catch (e) { 
-            status.innerHTML = "❌ Fetch blocked. Use manual fallback.";
-            document.getElementById('fallback-box').classList.remove('hidden'); 
-        }
+        } catch (e) { document.getElementById('status-area').innerHTML = "Refresh page or paste HTML source."; }
     }
 
     function processHTML(html) {
@@ -136,7 +133,6 @@
             if (id && title) allChannels.push({ id: id[1], name: title });
         });
         renderGrid(allChannels);
-        document.getElementById('fallback-box').classList.add('hidden');
     }
 
     function renderGrid(channels) {
@@ -154,48 +150,54 @@
         document.getElementById('target-name').innerText = name;
         showScreen('source-screen');
         const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
-        document.getElementById('source-options').innerHTML = sources.map(s => `<button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:15px; border-radius:10px; background:#161e35; color:white; border:1px solid #38bdf8; cursor:pointer;" onclick="prepareStream('${s}')">USE ${s.toUpperCase()}</button>`).join('');
+        document.getElementById('source-options').innerHTML = sources.map(s => `<button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:15px; border-radius:10px; background:#161e35; color:white; border:1px solid #38bdf8; cursor:pointer;" onclick="startAutomatedCleaning('${s}')">${s.toUpperCase()}</button>`).join('');
     }
 
-    function prepareStream(path) {
+    function startAutomatedCleaning(path) {
         showScreen('player-screen');
-        clickCount = 0;
         const shield = document.getElementById('click-shield');
-        shield.classList.remove('active-guard');
+        const bar = document.getElementById('progress-bar');
+        const status = document.getElementById('shield-status');
+        const ui = document.getElementById('shield-ui');
+        
+        shield.classList.remove('unlocked');
         shield.style.pointerEvents = "auto";
-        document.getElementById('shield-ui').classList.remove('hidden');
-        document.getElementById('shield-count').innerText = "0";
-        document.getElementById('ad-indicator').classList.add('hidden');
+        ui.classList.remove('hidden');
+        bar.style.width = "0%";
         
+        // Hide zones during cleaning
+        document.getElementById('unmute-btn').style.display = "none";
+        document.getElementById('max-btn').style.display = "none";
+
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-        
-        // NO SANDBOX ATTRIBUTE - This fixes the "Remove Sandbox" error
-        document.getElementById('iframe-container').innerHTML = `
-            <iframe id="video-frame" src="${url}" allowfullscreen></iframe>`;
+        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+
+        // AUTOMATION: Simulate 50 steps
+        let step = 0;
+        const interval = setInterval(() => {
+            step++;
+            bar.style.width = (step * 2) + "%";
+            status.innerText = `Clearing Popups: ${step}/50`;
+            
+            if (step >= 50) {
+                clearInterval(interval);
+                shield.classList.add('unlocked');
+                ui.classList.add('hidden');
+                
+                // Show Flicker Zones for Unmute/Maximize
+                document.getElementById('unmute-btn').style.display = "flex";
+                document.getElementById('max-btn').style.display = "flex";
+            }
+        }, 80); // Total wait time: ~4 seconds
     }
 
-    function handleShieldClick() {
+    function manualFlicker() {
         const shield = document.getElementById('click-shield');
-        
-        if (clickCount < REQ_CLICKS) {
-            // Counting phase
-            clickCount++;
-            document.getElementById('shield-count').innerText = clickCount;
-            if (clickCount >= REQ_CLICKS) {
-                shield.classList.add('active-guard');
-                document.getElementById('shield-ui').classList.add('hidden');
-                document.getElementById('ad-indicator').classList.remove('hidden');
-            }
-        } else {
-            // Flicker-Guard Phase: This is your protection since Sandbox is gone
-            // Disable shield for 150ms to let the Play click through
-            shield.style.pointerEvents = "none";
-            
-            setTimeout(() => {
-                // Re-enable shield immediately to block the pop-up scripts
-                shield.style.pointerEvents = "auto";
-            }, 150);
-        }
+        // Let click through for a split second
+        shield.style.pointerEvents = "none";
+        setTimeout(() => {
+            shield.style.pointerEvents = "auto";
+        }, 200);
     }
 
     function closePlayer() {
