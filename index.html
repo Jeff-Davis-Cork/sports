@@ -3,48 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeff's Sports</title>
+    <title>Stream Portal Pro</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; text-align: center; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; text-align: center; }
         .hidden { display: none !important; }
         
         .container { max-width: 1000px; margin: 0 auto; }
         input, textarea { width: 100%; max-width: 400px; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 10px; font-size: 16px; }
         
-        /* Search Bar Styling */
-        #search-bar { max-width: 100%; width: 100%; border: 2px solid var(--accent); margin-top: 10px; margin-bottom: 20px; }
+        #search-bar { max-width: 100%; width: 100%; border: 2px solid var(--accent); margin-top: 10px; margin-bottom: 20px; box-sizing: border-box; }
 
         button { padding: 12px 24px; background: var(--accent); color: #0f172a; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        button:hover { opacity: 0.8; }
         .back-btn { background: #475569; color: white; margin: 10px; }
 
-        /* Grid */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 10px; }
-        .card { background: var(--card); padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #334155; transition: 0.2s; height: 80px; display: flex; align-items: center; justify-content: center; }
-        .card:hover { border-color: var(--accent); background: #334155; }
-        .card strong { word-break: break-word; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; cursor: pointer; border: 1px solid #334155; transition: 0.2s; height: 60px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .card:hover { border-color: var(--accent); }
 
-        /* Source Selector */
-        .source-btn { display: block; width: 100%; max-width: 400px; margin: 10px auto; padding: 18px; background: #334155; color: white; border: 1px solid var(--accent); border-radius: 8px; cursor: pointer; font-size: 1.1em; }
+        .source-btn { display: block; width: 100%; max-width: 400px; margin: 10px auto; padding: 18px; background: #334155; color: white; border: 1px solid var(--accent); border-radius: 8px; cursor: pointer; }
 
-        /* Player - Fixed Height Fix */
+        /* PLAYER LAYOUT FIXED */
         #player-wrapper { 
             position: relative; 
             width: 100%; 
-            height: 85vh; /* This ensures the video takes up 85% of screen height */
+            height: 80vh; 
             background: #000; 
             border-radius: 12px; 
             overflow: hidden; 
             margin-top: 10px;
         }
+        
+        /* The Shield: This stays over the iframe until 35 clicks are done */
+        #click-shield {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 999;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
         iframe { width: 100%; height: 100%; border: none; }
         
-        #ad-overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; z-index: 100; 
-        }
         .spinner { width: 60px; height: 60px; border: 6px solid #334155; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -54,27 +59,22 @@
 <div class="container">
     <!-- 1. Password Screen -->
     <div id="login-screen">
-        <h1>Jeff's Sports</h1>
+        <h1>Private Portal</h1>
         <input type="password" id="pass-input" placeholder="Enter Password..." onkeydown="if(event.key==='Enter') checkPassword()">
         <br>
-        <button onclick="checkPassword()">Let's Do This</button>
+        <button onclick="checkPassword()">Access System</button>
     </div>
 
     <!-- 2. Channel List -->
     <div id="list-screen" class="hidden">
-        <h1>Live TV Channels</h1>
-        
-        <!-- Search Input -->
+        <h1>Live Channels</h1>
         <input type="text" id="search-bar" placeholder="🔍 Search channel name..." onkeyup="filterChannels()">
-
         <div id="status-area"></div>
-        
         <div id="fallback-box" class="hidden">
             <p style="color: #fb7185;">Cloudflare protection detected. Paste HTML source:</p>
             <textarea id="manual-html" rows="3" placeholder="Paste source code here..."></textarea><br>
             <button onclick="processHTML(document.getElementById('manual-html').value)">Load Data</button>
         </div>
-
         <div id="channel-grid" class="grid"></div>
     </div>
 
@@ -82,18 +82,19 @@
     <div id="source-screen" class="hidden">
         <button class="back-btn" onclick="showScreen('list-screen')">← Back to List</button>
         <h2 id="target-name" style="color: var(--accent);"></h2>
-        <p>Choose a Source:</p>
         <div id="source-options"></div>
     </div>
 
     <!-- 4. Player Screen -->
     <div id="player-screen" class="hidden">
-        <button class="back-btn" onclick="showScreen('source-screen')">← Back to Sources</button>
+        <button class="back-btn" onclick="closePlayer()">← Close Player</button>
         <div id="player-wrapper">
-            <div id="ad-overlay" class="hidden">
-                <div class="spinner"></div>
-                <h3 id="ad-status" style="color: var(--accent);">Clearing Pop-ups (0/35)...</h3>
-                <p>Browsing safely...</p>
+            <!-- Click Shield Overlays the Iframe -->
+            <div id="click-shield" onclick="handleShieldClick()">
+                <div id="shield-loading" class="hidden"><div class="spinner"></div></div>
+                <h2 id="shield-text">Click 35 times to unlock stream</h2>
+                <h1 id="shield-count" style="font-size: 3em; margin: 0;">0</h1>
+                <p id="shield-subtext">This prevents pop-ups from opening</p>
             </div>
             <div id="iframe-container" style="height: 100%;"></div>
         </div>
@@ -103,33 +104,31 @@
 <script>
     const CONFIG = {
         DOMAIN: "dlhd.link",
-        PASS: "jeff" // Change this
+        PASS: "123" // Change this to your password
     };
 
     let selectedID = "";
-    let selectedName = "";
     let allChannels = [];
+    let clickCount = 0;
+    const REQUIRED_CLICKS = 35;
 
     function checkPassword() {
         if (document.getElementById('pass-input').value === CONFIG.PASS) {
             showScreen('list-screen');
             loadChannels();
-        } else {
-            alert("Wrong password");
-        }
+        } else { alert("Wrong password"); }
     }
 
     async function loadChannels() {
         const status = document.getElementById('status-area');
         status.innerHTML = "Fetching channels...";
         const proxy = `https://corsproxy.io/?${encodeURIComponent('https://' + CONFIG.DOMAIN + '/24-7-channels.php')}`;
-
         try {
             const resp = await fetch(proxy);
             const html = await resp.text();
             processHTML(html);
         } catch (e) {
-            status.innerHTML = "❌ Automatic fetch failed.";
+            status.innerHTML = "❌ Blocked by Cloudflare.";
             document.getElementById('fallback-box').classList.remove('hidden');
         }
     }
@@ -139,15 +138,11 @@
         const doc = parser.parseFromString(html, 'text/html');
         const cards = doc.querySelectorAll('a.card');
         allChannels = [];
-
         cards.forEach(card => {
             const idMatch = card.getAttribute('href').match(/id=(\d+)/);
             const title = card.getAttribute('data-title') || card.querySelector('.card__title')?.innerText;
-            if (idMatch && title) {
-                allChannels.push({ id: idMatch[1], name: title });
-            }
+            if (idMatch && title) allChannels.push({ id: idMatch[1], name: title });
         });
-        
         renderGrid(allChannels);
         document.getElementById('fallback-box').classList.add('hidden');
         document.getElementById('status-area').innerHTML = `Loaded ${allChannels.length} channels.`;
@@ -156,56 +151,61 @@
     function renderGrid(channels) {
         const grid = document.getElementById('channel-grid');
         grid.innerHTML = channels.map(ch => `
-            <div class="card" onclick="selectChannel('${ch.id}', '${ch.name}')">
-                <strong>${ch.name.toUpperCase()}</strong>
-            </div>
+            <div class="card" onclick="selectChannel('${ch.id}', '${ch.name}')">${ch.name.toUpperCase()}</div>
         `).join('');
     }
 
-    // SEARCH LOGIC
     function filterChannels() {
         const query = document.getElementById('search-bar').value.toLowerCase();
-        const filtered = allChannels.filter(ch => ch.name.toLowerCase().includes(query));
-        renderGrid(filtered);
+        renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(query)));
     }
 
     function selectChannel(id, name) {
-        selectedID = id; selectedName = name;
+        selectedID = id;
         document.getElementById('target-name').innerText = name;
         showScreen('source-screen');
         const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
         document.getElementById('source-options').innerHTML = sources.map(s => `
-            <button class="source-btn" onclick="startStream('${s}')">${s.toUpperCase()}</button>
+            <button class="source-btn" onclick="prepareStream('${s}')">${s.toUpperCase()}</button>
         `).join('');
     }
 
-    function startStream(path) {
+    function prepareStream(path) {
         showScreen('player-screen');
-        const overlay = document.getElementById('ad-overlay');
-        const status = document.getElementById('ad-status');
-        const container = document.getElementById('iframe-container');
+        clickCount = 0;
+        document.getElementById('shield-count').innerText = "0";
+        document.getElementById('shield-text').innerText = "Click 35 times to unlock stream";
+        document.getElementById('click-shield').classList.remove('hidden');
         
-        overlay.classList.remove('hidden');
-        container.innerHTML = "";
+        const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
+        
+        // NEW SANDBOX FLAGS: allow-popups is often required for the player to initialize 
+        // even if we don't want the actual ads.
+        document.getElementById('iframe-container').innerHTML = `
+            <iframe id="video-frame" src="${url}" 
+                sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation" 
+                allowfullscreen>
+            </iframe>`;
+    }
 
-        let clicks = 0;
-        const totalClicks = 35;
-        // Faster interval (150ms) to handle 35 clicks without making the user wait too long
-        const interval = setInterval(() => {
-            clicks++;
-            status.innerText = `Clearing Pop-ups (${clicks}/${totalClicks})...`;
-            if (clicks >= totalClicks) {
-                clearInterval(interval);
-                overlay.classList.add('hidden');
-                
-                const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-                container.innerHTML = `
-                    <iframe src="${url}" 
-                        
-                        allowfullscreen>
-                    </iframe>`;
-            }
-        }, 150);
+    function handleShieldClick() {
+        clickCount++;
+        document.getElementById('shield-count').innerText = clickCount;
+        
+        if (clickCount >= REQUIRED_CLICKS) {
+            document.getElementById('shield-text').innerText = "Unlocking...";
+            document.getElementById('shield-loading').classList.remove('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('click-shield').classList.add('hidden');
+                document.getElementById('shield-loading').classList.add('hidden');
+            }, 500);
+        }
+    }
+
+    function closePlayer() {
+        document.getElementById('iframe-container').innerHTML = "";
+        showScreen('source-screen');
     }
 
     function showScreen(id) {
@@ -217,4 +217,3 @@
 </script>
 </body>
 </html>
-
