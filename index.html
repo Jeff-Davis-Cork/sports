@@ -23,7 +23,7 @@
         #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; }
         iframe { width: 100%; height: 100%; border: none; }
 
-        #exit-btn { position: absolute; top: 15px; left: 15px; z-index: 100005; background: rgba(255,0,0,0.5); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        #exit-btn { position: absolute; top: 15px; left: 15px; z-index: 100005; background: rgba(255,0,0,0.7); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
         /* THE CLICK SHIELD */
         #click-shield {
@@ -31,20 +31,19 @@
             z-index: 100000; background: rgba(0,0,0,0.95);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        #click-shield.unlocked { background: transparent !important; pointer-events: auto; }
+        #click-shield.strobe-active { background: rgba(0,0,0,0) !important; border: 5px solid red; }
 
         /* UNMUTE ASSISTANT */
         #unmute-helper {
-            position: absolute; top: 10px; right: 10px;
-            width: 120px; height: 50px;
+            position: absolute; top: 70px; right: 20px;
+            width: 200px; padding: 20px;
             background: #ff4444; color: white;
-            z-index: 100010; border-radius: 5px;
-            display: flex; align-items: center; justify-content: center;
+            z-index: 100010; border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             font-weight: bold; cursor: pointer;
-            box-shadow: 0 0 20px rgba(255,0,0,0.5);
-            animation: pulse 1s infinite;
+            box-shadow: 0 0 30px rgba(255,0,0,0.8);
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .sync-active { background: #22c55e !important; box-shadow: 0 0 30px #22c55e !important; }
 
         /* Progress UI */
         #progress-container { width: 280px; height: 8px; background: #334155; border-radius: 4px; margin-top: 20px; overflow: hidden; }
@@ -65,7 +64,7 @@
 <!-- 2. Channel List -->
 <div id="list-screen" class="container hidden">
     <h1>Jeff's Channels</h1>
-    <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box;">
+    <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box; padding: 15px; border-radius: 10px; background: #0f172a; color: white;">
     <div id="channel-grid" class="grid"></div>
 </div>
 
@@ -78,16 +77,19 @@
 
 <!-- 4. Player Screen -->
 <div id="player-screen" class="hidden">
-    <button id="exit-btn" onclick="closePlayer()">✕ Exit</button>
+    <button id="exit-btn" onclick="closePlayer()">✕ EXIT</button>
     
-    <!-- One-Click Unmute Sync (Appears after 50 clicks) -->
-    <div id="unmute-helper" class="hidden" onclick="triggerUnmute()">CLICK TO UNMUTE</div>
+    <!-- Rapid Fire Unmute Button -->
+    <div id="unmute-helper" class="hidden" onclick="startRapidFire()">
+        <span id="helper-text">START UNMUTE SYNC</span>
+        <small id="helper-timer" style="display:block; font-size: 10px; margin-top: 5px;">(Click here, then click unmute below)</small>
+    </div>
 
-    <div id="click-shield" onclick="handleFlicker()">
+    <div id="click-shield">
         <div id="shield-ui">
             <h2>Jeff's Security Bypass</h2>
             <div id="progress-container"><div id="progress-bar"></div></div>
-            <p id="shield-status">Bypassing 50 ad-gates...</p>
+            <p id="shield-status">Clearing 50 hidden ad-gates...</p>
         </div>
     </div>
 
@@ -102,7 +104,7 @@
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
             loadChannels();
-        } else { alert("Wrong password, Jeff!"); }
+        } else { alert("Incorrect password, Jeff!"); }
     }
 
     async function loadChannels() {
@@ -111,7 +113,7 @@
             const resp = await fetch(proxy);
             const html = await resp.text();
             processHTML(html);
-        } catch (e) { alert("Error loading channels."); }
+        } catch (e) { alert("Connection Error. Try refreshing."); }
     }
 
     function processHTML(html) {
@@ -151,46 +153,58 @@
         const shield = document.getElementById('click-shield');
         const bar = document.getElementById('progress-bar');
         const ui = document.getElementById('shield-ui');
+        const helper = document.getElementById('unmute-helper');
         
-        shield.classList.remove('unlocked');
+        shield.style.pointerEvents = "auto";
+        shield.classList.remove('strobe-active');
         ui.classList.remove('hidden');
-        document.getElementById('unmute-helper').classList.add('hidden');
+        helper.classList.add('hidden');
         
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+        document.getElementById('iframe-container').innerHTML = `<iframe id="stream-frame" src="${url}" allowfullscreen></iframe>`;
 
+        // Step 1: Automated 50-step clear
         let step = 0;
         const interval = setInterval(() => {
             step++;
             bar.style.width = (step * 2) + "%";
             if (step >= 50) {
                 clearInterval(interval);
-                shield.classList.add('unlocked');
                 ui.classList.add('hidden');
-                document.getElementById('unmute-helper').classList.remove('hidden');
+                helper.classList.remove('hidden');
+                // Don't unlock the shield yet - wait for Rapid Fire
             }
-        }, 60);
+        }, 50);
     }
 
-    // Force the user back to the main window if they get tab-spammed
-    setInterval(() => {
-        if (!document.getElementById('player-screen').classList.contains('hidden')) {
-            window.focus();
-        }
-    }, 500);
-
-    function triggerUnmute() {
-        // High speed flicker specifically for the unmute button location
-        handleFlicker();
-        setTimeout(() => {
-            document.getElementById('unmute-helper').classList.add('hidden');
-        }, 500);
-    }
-
-    function handleFlicker() {
+    function startRapidFire() {
         const shield = document.getElementById('click-shield');
-        shield.style.pointerEvents = "none";
-        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
+        const helper = document.getElementById('unmute-helper');
+        const helperText = document.getElementById('helper-text');
+        
+        helper.classList.add('sync-active');
+        helperText.innerText = "SYNC ACTIVE: CLICK UNMUTE NOW";
+        
+        let timeLeft = 60; // 6 seconds (60 * 100ms)
+        const strobeInterval = setInterval(() => {
+            // Flicker the shield 10 times per second
+            if (shield.style.pointerEvents === "none") {
+                shield.style.pointerEvents = "auto";
+                shield.classList.remove('strobe-active');
+            } else {
+                shield.style.pointerEvents = "none";
+                shield.classList.add('strobe-active');
+            }
+
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(strobeInterval);
+                shield.style.pointerEvents = "auto"; // Default back to protected
+                shield.classList.remove('strobe-active');
+                helper.classList.remove('sync-active');
+                helperText.innerText = "RESTART SYNC";
+            }
+        }, 100);
     }
 
     function closePlayer() {
