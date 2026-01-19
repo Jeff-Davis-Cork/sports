@@ -86,4 +86,153 @@
 </div>
 
 <!-- 3. Source Selection -->
-<div id
+<div id="source-screen" class="container hidden">
+    <button onclick="showScreen('list-screen')" style="background:#475569; color:white; margin-bottom: 20px;">← Back to Channels</button>
+    <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
+    <div id="source-options"></div>
+</div>
+
+<!-- 4. Full-Screen Player Screen -->
+<div id="player-screen" class="hidden">
+    <button id="exit-btn" onclick="closePlayer()">✕ EXIT PLAYER</button>
+    
+    <div id="click-shield" onclick="manualFlicker()">
+        <div id="shield-ui" class="instruction-box">
+            <h2 style="color: var(--accent); margin: 0;">PROTECTION ACTIVE</h2>
+            
+            <div id="progress-wrap"><div id="progress-fill"></div></div>
+            
+            <div class="urgent-text flashing">
+                CLICK ANY UNMUTE OR PLAY BUTTONS NOW!
+            </div>
+            
+            <p style="font-size: 1.2rem; color: #ccc;">
+                The screen is strobing to block pop-up ads.<br>
+                Quickly click the video player's buttons during this time.
+            </p>
+            <h3 id="timer-text" style="color: #fff; font-size: 1.5rem;">20s remaining</h3>
+        </div>
+    </div>
+
+    <div id="iframe-container" style="width:100%; height:100%;"></div>
+</div>
+
+<script>
+    const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
+    let selectedID = "", allChannels = [];
+
+    function checkPassword() {
+        if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
+            showScreen('list-screen');
+            loadChannels();
+        } else {
+            alert("Incorrect password, Jeff!");
+            document.getElementById('pass-input').value = "";
+        }
+    }
+
+    async function loadChannels() {
+        const proxy = `https://corsproxy.io/?${encodeURIComponent('https://' + CONFIG.DOMAIN + '/24-7-channels.php')}`;
+        try {
+            const resp = await fetch(proxy);
+            const html = await resp.text();
+            processHTML(html);
+        } catch (e) {
+            document.getElementById('status-area').innerHTML = "Could not connect to stream domain. Try refreshing.";
+        }
+    }
+
+    function processHTML(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        allChannels = [];
+        doc.querySelectorAll('a.card').forEach(card => {
+            const id = card.getAttribute('href').match(/id=(\d+)/);
+            const title = card.getAttribute('data-title') || card.querySelector('.card__title')?.innerText;
+            if (id && title) allChannels.push({ id: id[1], name: title });
+        });
+        renderGrid(allChannels);
+    }
+
+    function renderGrid(channels) {
+        const grid = document.getElementById('channel-grid');
+        grid.innerHTML = channels.map(ch => `<div class="card" onclick="selectChannel('${ch.id}', '${ch.name}')">${ch.name.toUpperCase()}</div>`).join('');
+    }
+
+    function filterChannels() {
+        const q = document.getElementById('search-bar').value.toLowerCase();
+        renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(q)));
+    }
+
+    function selectChannel(id, name) {
+        selectedID = id;
+        document.getElementById('target-name').innerText = name;
+        showScreen('source-screen');
+        const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
+        document.getElementById('source-options').innerHTML = sources.map(s => `
+            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold; font-size:1.2rem;" onclick="startStream('${s}')">USE SOURCE ${s.toUpperCase()}</button>
+        `).join('');
+    }
+
+    function startStream(path) {
+        showScreen('player-screen');
+        const shield = document.getElementById('click-shield');
+        const fill = document.getElementById('progress-fill');
+        const timerTxt = document.getElementById('timer-text');
+        
+        shield.style.pointerEvents = "auto";
+        shield.classList.remove('strobe-open');
+        document.getElementById('shield-ui').classList.remove('hidden');
+        fill.style.width = "0%";
+        
+        const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
+        document.getElementById('iframe-container').innerHTML = `<iframe id="v-frame" src="${url}" allowfullscreen></iframe>`;
+
+        let timeElapsed = 0;
+        const totalDuration = 200; // 200 * 100ms = 20 seconds
+        
+        const strobeInterval = setInterval(() => {
+            timeElapsed++;
+            fill.style.width = (timeElapsed / 2) + "%";
+            timerTxt.innerText = `${Math.ceil((totalDuration - timeElapsed) / 10)}s remaining`;
+
+            // THE STROBE: Toggles interaction 10 times per second
+            if (shield.style.pointerEvents === "none") {
+                shield.style.pointerEvents = "auto";
+                shield.classList.remove('strobe-open');
+            } else {
+                shield.style.pointerEvents = "none";
+                shield.classList.add('strobe-open');
+            }
+
+            if (timeElapsed >= totalDuration) {
+                clearInterval(strobeInterval);
+                // End state: Protection stays active to block random clicks, 
+                // but UI hides so user can see the game.
+                shield.style.pointerEvents = "auto";
+                shield.classList.add('strobe-open');
+                document.getElementById('shield-ui').classList.add('hidden');
+            }
+        }, 100);
+    }
+
+    function manualFlicker() {
+        const shield = document.getElementById('click-shield');
+        shield.style.pointerEvents = "none";
+        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
+    }
+
+    function closePlayer() {
+        document.getElementById('iframe-container').innerHTML = "";
+        showScreen('source-screen');
+    }
+
+    function showScreen(id) {
+        ['login-screen', 'list-screen', 'source-screen', 'player-screen'].forEach(s => {
+            document.getElementById(s).classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
