@@ -30,24 +30,15 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 100000; background: rgba(0,0,0,0.95);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer;
         }
-        #click-shield.strobe-active { background: rgba(0,0,0,0) !important; border: 5px solid red; }
-
-        /* UNMUTE ASSISTANT */
-        #unmute-helper {
-            position: absolute; top: 70px; right: 20px;
-            width: 200px; padding: 20px;
-            background: #ff4444; color: white;
-            z-index: 100010; border-radius: 10px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-weight: bold; cursor: pointer;
-            box-shadow: 0 0 30px rgba(255,0,0,0.8);
-        }
-        .sync-active { background: #22c55e !important; box-shadow: 0 0 30px #22c55e !important; }
+        #click-shield.pulse-active { background: rgba(0,0,0,0) !important; border: 4px solid var(--accent); }
 
         /* Progress UI */
-        #progress-container { width: 280px; height: 8px; background: #334155; border-radius: 4px; margin-top: 20px; overflow: hidden; }
-        #progress-bar { height: 100%; width: 0%; background: var(--accent); }
+        #progress-container { width: 300px; height: 12px; background: #334155; border-radius: 6px; margin-top: 20px; overflow: hidden; }
+        #progress-bar { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
+        #shield-ui h2 { margin: 0; }
+        #shield-ui p { color: #aaa; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -79,17 +70,12 @@
 <div id="player-screen" class="hidden">
     <button id="exit-btn" onclick="closePlayer()">✕ EXIT</button>
     
-    <!-- Rapid Fire Unmute Button -->
-    <div id="unmute-helper" class="hidden" onclick="startRapidFire()">
-        <span id="helper-text">START UNMUTE SYNC</span>
-        <small id="helper-timer" style="display:block; font-size: 10px; margin-top: 5px;">(Click here, then click unmute below)</small>
-    </div>
-
-    <div id="click-shield">
+    <div id="click-shield" onclick="manualFlicker()">
         <div id="shield-ui">
             <h2>Jeff's Security Bypass</h2>
             <div id="progress-container"><div id="progress-bar"></div></div>
-            <p id="shield-status">Clearing 50 hidden ad-gates...</p>
+            <p id="shield-status">Initializing Protection (10s)...</p>
+            <strong style="color: var(--accent);">Click Video to Unmute/Play Now!</strong>
         </div>
     </div>
 
@@ -113,7 +99,7 @@
             const resp = await fetch(proxy);
             const html = await resp.text();
             processHTML(html);
-        } catch (e) { alert("Connection Error. Try refreshing."); }
+        } catch (e) { alert("Error connecting. Please refresh."); }
     }
 
     function processHTML(html) {
@@ -152,59 +138,50 @@
         showScreen('player-screen');
         const shield = document.getElementById('click-shield');
         const bar = document.getElementById('progress-bar');
-        const ui = document.getElementById('shield-ui');
-        const helper = document.getElementById('unmute-helper');
+        const status = document.getElementById('shield-status');
         
         shield.style.pointerEvents = "auto";
-        shield.classList.remove('strobe-active');
-        ui.classList.remove('hidden');
-        helper.classList.add('hidden');
+        shield.classList.remove('pulse-active');
+        document.getElementById('shield-ui').classList.remove('hidden');
+        bar.style.width = "0%";
         
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-        document.getElementById('iframe-container').innerHTML = `<iframe id="stream-frame" src="${url}" allowfullscreen></iframe>`;
+        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
 
-        // Step 1: Automated 50-step clear
-        let step = 0;
-        const interval = setInterval(() => {
-            step++;
-            bar.style.width = (step * 2) + "%";
-            if (step >= 50) {
-                clearInterval(interval);
-                ui.classList.add('hidden');
-                helper.classList.remove('hidden');
-                // Don't unlock the shield yet - wait for Rapid Fire
-            }
-        }, 50);
-    }
+        // 10-SECOND AUTOMATED PULSE SEQUENCE
+        let time = 0;
+        const totalTime = 100; // 100 * 100ms = 10 seconds
+        
+        const bypassInterval = setInterval(() => {
+            time++;
+            bar.style.width = (time) + "%";
+            status.innerText = `Bypass Active: ${Math.ceil((100 - time) / 10)}s remaining`;
 
-    function startRapidFire() {
-        const shield = document.getElementById('click-shield');
-        const helper = document.getElementById('unmute-helper');
-        const helperText = document.getElementById('helper-text');
-        
-        helper.classList.add('sync-active');
-        helperText.innerText = "SYNC ACTIVE: CLICK UNMUTE NOW";
-        
-        let timeLeft = 60; // 6 seconds (60 * 100ms)
-        const strobeInterval = setInterval(() => {
-            // Flicker the shield 10 times per second
+            // Automated "Flicker": Turn shield off and on 10 times per second
             if (shield.style.pointerEvents === "none") {
                 shield.style.pointerEvents = "auto";
-                shield.classList.remove('strobe-active');
+                shield.classList.remove('pulse-active');
             } else {
                 shield.style.pointerEvents = "none";
-                shield.classList.add('strobe-active');
+                shield.classList.add('pulse-active');
             }
 
-            timeLeft--;
-            if (timeLeft <= 0) {
-                clearInterval(strobeInterval);
-                shield.style.pointerEvents = "auto"; // Default back to protected
-                shield.classList.remove('strobe-active');
-                helper.classList.remove('sync-active');
-                helperText.innerText = "RESTART SYNC";
+            if (time >= totalTime) {
+                clearInterval(bypassInterval);
+                // Final state: Shield invisible but persistent for manual clicks
+                shield.style.pointerEvents = "auto";
+                shield.classList.add('pulse-active');
+                document.getElementById('shield-ui').classList.add('hidden');
+                status.innerText = "Protection Fully Active";
             }
         }, 100);
+    }
+
+    function manualFlicker() {
+        const shield = document.getElementById('click-shield');
+        // Let the click through for 150ms then snap back
+        shield.style.pointerEvents = "none";
+        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 150);
     }
 
     function closePlayer() {
