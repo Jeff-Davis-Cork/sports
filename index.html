@@ -6,29 +6,32 @@
     <title>Jeff's Sports & TV</title>
     <style>
         :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ff4757; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow: hidden; }
         .hidden { display: none !important; }
         
-        /* General UI */
         .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
-        h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 30px; }
-        input { width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; border: 2px solid #334155; background: #0f172a; color: white; margin-bottom: 15px; font-size: 1.2rem; outline: none; }
-        input:focus { border-color: var(--accent); }
-        button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: 0.3s; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(56, 189, 248, 0.4); }
+        h1 { color: var(--accent); font-size: 2.5rem; }
+        input { width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 1.2rem; outline: none; }
+        button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; }
 
-        /* Channel List */
-        #search-bar { max-width: 100%; width: 100%; border: 3px solid var(--accent); box-sizing: border-box; margin-bottom: 30px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .card { background: var(--card); padding: 30px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; display: flex; align-items: center; justify-content: center; min-height: 60px; }
-        .card:hover { border-color: var(--accent); background: #1e293b; transform: scale(1.05); }
+        /* Grid UI */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { background: var(--card); padding: 30px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        .card:hover { border-color: var(--accent); transform: scale(1.05); }
 
         /* Full Screen Player */
         #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; }
         iframe { width: 100%; height: 100%; border: none; }
-        #exit-btn { position: absolute; top: 20px; left: 20px; z-index: 100005; background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
 
-        /* The 20-Second Strobe Shield */
+        /* Back Navigation Message */
+        #nav-tip {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 100010; background: rgba(0,0,0,0.8); color: #fff;
+            padding: 10px 20px; border-radius: 30px; border: 1px solid var(--accent);
+            font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.5s;
+        }
+
+        /* 20-Second Strobe Shield */
         #click-shield {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 100000; background: rgba(0,0,0,0.96);
@@ -36,84 +39,54 @@
         }
         #click-shield.strobe-open { background: transparent !important; border: 8px solid var(--accent); box-sizing: border-box; }
 
-        /* Large Instruction Box */
-        .instruction-box { 
-            background: rgba(10, 15, 30, 0.95); 
-            padding: 40px; 
-            border-radius: 20px; 
-            border: 4px solid var(--accent); 
-            max-width: 80%;
-            box-shadow: 0 0 50px rgba(0,0,0,1);
-        }
-        .urgent-text { 
-            font-size: 3rem; 
-            color: #fff; 
-            margin: 20px 0; 
-            font-weight: 900; 
-            line-height: 1.1;
-            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
-        }
-        .flashing { animation: flash-red 0.8s infinite; }
-
-        /* Progress Bar */
-        #progress-wrap { width: 100%; height: 20px; background: #222; border-radius: 10px; margin: 20px 0; overflow: hidden; border: 1px solid #444; }
+        /* Large Instructions */
+        .instruction-box { background: rgba(10, 15, 30, 0.95); padding: 40px; border-radius: 20px; border: 4px solid var(--accent); max-width: 85%; }
+        .urgent-text { font-size: 3rem; color: #fff; font-weight: 900; animation: flash-accent 0.8s infinite; line-height: 1.1; margin: 20px 0; }
+        
+        #progress-wrap { width: 100%; height: 15px; background: #222; border-radius: 10px; margin-top: 20px; overflow: hidden; }
         #progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
 
-        @keyframes flash-red {
-            0% { color: #fff; }
-            50% { color: var(--accent); transform: scale(1.05); }
-            100% { color: #fff; }
+        @keyframes flash-accent {
+            0%, 100% { color: #fff; transform: scale(1); }
+            50% { color: var(--accent); transform: scale(1.03); }
         }
     </style>
 </head>
 <body>
 
-<!-- 1. Password Screen -->
+<!-- 1. Password -->
 <div id="login-screen" class="container">
-    <br><br><br>
-    <h1>Jeff's Sports & TV</h1>
-    <input type="password" id="pass-input" placeholder="Enter Password..." onkeydown="if(event.key==='Enter') checkPassword()">
-    <br>
-    <button onclick="checkPassword()">Let's Do This!</button>
+    <br><br><h1>Jeff's Sports & TV</h1>
+    <input type="password" id="pass-input" placeholder="Password..." onkeydown="if(event.key==='Enter') checkPassword()">
+    <br><br><button onclick="checkPassword()">Let's Do This!</button>
 </div>
 
-<!-- 2. Channel List -->
+<!-- 2. Channels -->
 <div id="list-screen" class="container hidden">
     <h1>Jeff's Channels</h1>
-    <input type="text" id="search-bar" placeholder="🔍 Search through channels..." onkeyup="filterChannels()">
-    <div id="status-area"></div>
+    <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box; padding:15px; border-radius:10px; background:#0f172a; color:white;">
     <div id="channel-grid" class="grid"></div>
 </div>
 
-<!-- 3. Source Selection -->
+<!-- 3. Sources -->
 <div id="source-screen" class="container hidden">
-    <button onclick="showScreen('list-screen')" style="background:#475569; color:white; margin-bottom: 20px;">← Back to Channels</button>
+    <button onclick="showScreen('list-screen')" style="background:#475569; color:white;">← Back</button>
     <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
     <div id="source-options"></div>
 </div>
 
-<!-- 4. Full-Screen Player Screen -->
+<!-- 4. Player -->
 <div id="player-screen" class="hidden">
-    <button id="exit-btn" onclick="closePlayer()">✕ EXIT PLAYER</button>
+    <div id="nav-tip">Tip: Use your browser's BACK button to exit video</div>
     
     <div id="click-shield" onclick="manualFlicker()">
         <div id="shield-ui" class="instruction-box">
-            <h2 style="color: var(--accent); margin: 0;">PROTECTION ACTIVE</h2>
-            
+            <h2 style="color: var(--accent); margin: 0;">PROTECTION BYPASS ACTIVE</h2>
             <div id="progress-wrap"><div id="progress-fill"></div></div>
-            
-            <div class="urgent-text flashing">
-                CLICK ANY UNMUTE OR PLAY BUTTONS NOW!
-            </div>
-            
-            <p style="font-size: 1.2rem; color: #ccc;">
-                The screen is strobing to block pop-up ads.<br>
-                Quickly click the video player's buttons during this time.
-            </p>
+            <div class="urgent-text">CLICK ANY UNMUTE OR PLAY BUTTONS NOW!</div>
             <h3 id="timer-text" style="color: #fff; font-size: 1.5rem;">20s remaining</h3>
         </div>
     </div>
-
     <div id="iframe-container" style="width:100%; height:100%;"></div>
 </div>
 
@@ -125,10 +98,7 @@
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
             loadChannels();
-        } else {
-            alert("Incorrect password, Jeff!");
-            document.getElementById('pass-input').value = "";
-        }
+        } else { alert("Incorrect password, Jeff!"); }
     }
 
     async function loadChannels() {
@@ -137,9 +107,7 @@
             const resp = await fetch(proxy);
             const html = await resp.text();
             processHTML(html);
-        } catch (e) {
-            document.getElementById('status-area').innerHTML = "Could not connect to stream domain. Try refreshing.";
-        }
+        } catch (e) { console.log("Fetch error"); }
     }
 
     function processHTML(html) {
@@ -170,7 +138,7 @@
         showScreen('source-screen');
         const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
         document.getElementById('source-options').innerHTML = sources.map(s => `
-            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold; font-size:1.2rem;" onclick="startStream('${s}')">USE SOURCE ${s.toUpperCase()}</button>
+            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold;" onclick="startStream('${s}')">SOURCE ${s.toUpperCase()}</button>
         `).join('');
     }
 
@@ -179,24 +147,28 @@
         const shield = document.getElementById('click-shield');
         const fill = document.getElementById('progress-fill');
         const timerTxt = document.getElementById('timer-text');
+        const tip = document.getElementById('nav-tip');
         
+        // Show Navigation Tip briefly
+        tip.style.opacity = "1";
+        setTimeout(() => { tip.style.opacity = "0"; }, 4000);
+
         shield.style.pointerEvents = "auto";
         shield.classList.remove('strobe-open');
         document.getElementById('shield-ui').classList.remove('hidden');
         fill.style.width = "0%";
         
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-        document.getElementById('iframe-container').innerHTML = `<iframe id="v-frame" src="${url}" allowfullscreen></iframe>`;
+        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
 
         let timeElapsed = 0;
-        const totalDuration = 200; // 200 * 100ms = 20 seconds
+        const totalDuration = 200; // 20 seconds
         
         const strobeInterval = setInterval(() => {
             timeElapsed++;
             fill.style.width = (timeElapsed / 2) + "%";
             timerTxt.innerText = `${Math.ceil((totalDuration - timeElapsed) / 10)}s remaining`;
 
-            // THE STROBE: Toggles interaction 10 times per second
             if (shield.style.pointerEvents === "none") {
                 shield.style.pointerEvents = "auto";
                 shield.classList.remove('strobe-open');
@@ -207,8 +179,6 @@
 
             if (timeElapsed >= totalDuration) {
                 clearInterval(strobeInterval);
-                // End state: Protection stays active to block random clicks, 
-                // but UI hides so user can see the game.
                 shield.style.pointerEvents = "auto";
                 shield.classList.add('strobe-open');
                 document.getElementById('shield-ui').classList.add('hidden');
@@ -222,12 +192,21 @@
         setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
     }
 
+    // Handle browser Back button to exit full player
+    window.onpopstate = function() {
+        if (!document.getElementById('player-screen').classList.contains('hidden')) {
+            closePlayer();
+        }
+    };
+
     function closePlayer() {
         document.getElementById('iframe-container').innerHTML = "";
         showScreen('source-screen');
     }
 
     function showScreen(id) {
+        // Push state so back button works for navigation
+        if (id !== 'login-screen') window.history.pushState({screen: id}, "");
         ['login-screen', 'list-screen', 'source-screen', 'player-screen'].forEach(s => {
             document.getElementById(s).classList.add('hidden');
         });
