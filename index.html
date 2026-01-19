@@ -6,56 +6,46 @@
     <title>Jeff's Sports & TV</title>
     <style>
         :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow-x: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow: hidden; }
         .hidden { display: none !important; }
         
+        /* Layout */
         .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
         h1 { color: var(--accent); }
         input { width: 100%; max-width: 400px; padding: 14px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 10px; font-size: 18px; outline: none; }
-        
         button { padding: 14px 28px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        
+
         /* Grid */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 15px; margin-top: 20px; }
         .card { background: var(--card); padding: 25px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; height: 50px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
         /* FULL SCREEN PLAYER */
-        #player-screen { 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100vw; height: 100vh; 
-            background: #000; 
-            z-index: 9999; 
-        }
-
-        #exit-btn {
-            position: absolute;
-            top: 15px; left: 15px;
-            z-index: 100001; /* Higher than shield */
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            opacity: 0.4;
-            padding: 8px 15px;
-        }
-        #exit-btn:hover { opacity: 1; background: #ff4444; }
-
-        /* THE AUTOMATED SHIELD */
-        #click-shield {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 100000;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-        #click-shield.unlocked { background: transparent !important; }
-
+        #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; }
         iframe { width: 100%; height: 100%; border: none; }
-        
+
+        #exit-btn { position: absolute; top: 15px; left: 15px; z-index: 100005; background: rgba(255,0,0,0.5); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+
+        /* THE CLICK SHIELD */
+        #click-shield {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 100000; background: rgba(0,0,0,0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #click-shield.unlocked { background: transparent !important; pointer-events: auto; }
+
+        /* UNMUTE ASSISTANT */
+        #unmute-helper {
+            position: absolute; top: 10px; right: 10px;
+            width: 120px; height: 50px;
+            background: #ff4444; color: white;
+            z-index: 100010; border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
         /* Progress UI */
         #progress-container { width: 280px; height: 8px; background: #334155; border-radius: 4px; margin-top: 20px; overflow: hidden; }
         #progress-bar { height: 100%; width: 0%; background: var(--accent); }
@@ -76,29 +66,28 @@
 <div id="list-screen" class="container hidden">
     <h1>Jeff's Channels</h1>
     <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box;">
-    <div id="status-area"></div>
     <div id="channel-grid" class="grid"></div>
 </div>
 
 <!-- 3. Source Selection -->
 <div id="source-screen" class="container hidden">
-    <button onclick="showScreen('list-screen')" style="background:#475569; color:white;">← Back</button>
-    <h2 id="target-name" style="color: var(--accent);"></h2>
-    <p>Choose your source:</p>
+    <button onclick="showScreen('list-screen')">← Back</button>
+    <h2 id="target-name"></h2>
     <div id="source-options"></div>
 </div>
 
-<!-- 4. Full-Screen Player Screen -->
+<!-- 4. Player Screen -->
 <div id="player-screen" class="hidden">
-    <!-- Floating Exit Button -->
-    <button id="exit-btn" onclick="closePlayer()">✕ Exit Video</button>
+    <button id="exit-btn" onclick="closePlayer()">✕ Exit</button>
+    
+    <!-- One-Click Unmute Sync (Appears after 50 clicks) -->
+    <div id="unmute-helper" class="hidden" onclick="triggerUnmute()">CLICK TO UNMUTE</div>
 
-    <!-- Automated Shield -->
-    <div id="click-shield" onclick="manualFlicker()">
+    <div id="click-shield" onclick="handleFlicker()">
         <div id="shield-ui">
-            <h2 id="shield-text">Jeff's Security Bypass</h2>
+            <h2>Jeff's Security Bypass</h2>
             <div id="progress-container"><div id="progress-bar"></div></div>
-            <p id="shield-status" style="color: #aaa;">Bypassing 50 ad-gates...</p>
+            <p id="shield-status">Bypassing 50 ad-gates...</p>
         </div>
     </div>
 
@@ -113,7 +102,7 @@
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
             loadChannels();
-        } else { alert("Incorrect password, Jeff!"); }
+        } else { alert("Wrong password, Jeff!"); }
     }
 
     async function loadChannels() {
@@ -122,7 +111,7 @@
             const resp = await fetch(proxy);
             const html = await resp.text();
             processHTML(html);
-        } catch (e) { document.getElementById('status-area').innerHTML = "Refresh or paste HTML source."; }
+        } catch (e) { alert("Error loading channels."); }
     }
 
     function processHTML(html) {
@@ -143,8 +132,8 @@
     }
 
     function filterChannels() {
-        const query = document.getElementById('search-bar').value.toLowerCase();
-        renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(query)));
+        const q = document.getElementById('search-bar').value.toLowerCase();
+        renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(q)));
     }
 
     function selectChannel(id, name) {
@@ -153,21 +142,19 @@
         showScreen('source-screen');
         const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
         document.getElementById('source-options').innerHTML = sources.map(s => `
-            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:15px; border-radius:10px; background:#161e35; color:white; border:1px solid #38bdf8; cursor:pointer;" onclick="startAutomatedCleaning('${s}')">SOURCE ${s.toUpperCase()}</button>
+            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:15px;" onclick="startStream('${s}')">SOURCE ${s.toUpperCase()}</button>
         `).join('');
     }
 
-    function startAutomatedCleaning(path) {
+    function startStream(path) {
         showScreen('player-screen');
         const shield = document.getElementById('click-shield');
         const bar = document.getElementById('progress-bar');
-        const status = document.getElementById('shield-status');
         const ui = document.getElementById('shield-ui');
         
         shield.classList.remove('unlocked');
-        shield.style.pointerEvents = "auto";
         ui.classList.remove('hidden');
-        bar.style.width = "0%";
+        document.getElementById('unmute-helper').classList.add('hidden');
         
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
         document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
@@ -176,23 +163,34 @@
         const interval = setInterval(() => {
             step++;
             bar.style.width = (step * 2) + "%";
-            status.innerText = `Clearing: ${step}/50`;
-            
             if (step >= 50) {
                 clearInterval(interval);
                 shield.classList.add('unlocked');
                 ui.classList.add('hidden');
+                document.getElementById('unmute-helper').classList.remove('hidden');
             }
-        }, 70); 
+        }, 60);
     }
 
-    function manualFlicker() {
-        const shield = document.getElementById('click-shield');
-        // Temporarily allow click through to play/unmute/maximize video
-        shield.style.pointerEvents = "none";
+    // Force the user back to the main window if they get tab-spammed
+    setInterval(() => {
+        if (!document.getElementById('player-screen').classList.contains('hidden')) {
+            window.focus();
+        }
+    }, 500);
+
+    function triggerUnmute() {
+        // High speed flicker specifically for the unmute button location
+        handleFlicker();
         setTimeout(() => {
-            shield.style.pointerEvents = "auto";
-        }, 250);
+            document.getElementById('unmute-helper').classList.add('hidden');
+        }, 500);
+    }
+
+    function handleFlicker() {
+        const shield = document.getElementById('click-shield');
+        shield.style.pointerEvents = "none";
+        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
     }
 
     function closePlayer() {
