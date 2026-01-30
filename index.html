@@ -6,7 +6,7 @@
     <title>Jeff's Sports & TV</title>
     <style>
         :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ff4757; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow-x: hidden; }
         .hidden { display: none !important; }
         
         .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
@@ -16,7 +16,7 @@
 
         /* Grid UI */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: var(--card); padding: 30px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        .card { background: var(--card); padding: 30px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; min-height: 60px; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.9rem; }
         .card:hover { border-color: var(--accent); transform: scale(1.05); }
 
         /* Full Screen Player */
@@ -54,28 +54,28 @@
 </head>
 <body>
 
-<!-- 1. Password -->
+<!-- 1. Password Screen -->
 <div id="login-screen" class="container">
     <br><br><h1>Jeff's Sports & TV</h1>
     <input type="password" id="pass-input" placeholder="Password..." onkeydown="if(event.key==='Enter') checkPassword()">
     <br><br><button onclick="checkPassword()">Let's Do This!</button>
 </div>
 
-<!-- 2. Channels -->
+<!-- 2. Channel Selection Screen -->
 <div id="list-screen" class="container hidden">
     <h1>Jeff's Channels</h1>
     <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box; padding:15px; border-radius:10px; background:#0f172a; color:white;">
-    <div id="channel-grid" class="grid"></div>
+    <div id="channel-grid" class="grid">Loading Channels...</div>
 </div>
 
-<!-- 3. Sources -->
+<!-- 3. Source Selection Screen -->
 <div id="source-screen" class="container hidden">
     <button onclick="showScreen('list-screen')" style="background:#475569; color:white;">← Back</button>
     <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
     <div id="source-options"></div>
 </div>
 
-<!-- 4. Player -->
+<!-- 4. Full Player Screen -->
 <div id="player-screen" class="hidden">
     <div id="nav-tip">Tip: Use your browser's BACK button to exit video</div>
     
@@ -91,10 +91,10 @@
 </div>
 
 <script>
-    // Updated domain to a currently active one
-    const CONFIG = { DOMAIN: "daddylive.mp", PASS: "jeff" };
+    const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
     let selectedID = "", allChannels = [];
 
+    // 1. Login Logic
     function checkPassword() {
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
@@ -102,84 +102,85 @@
         } else { alert("Incorrect password, Jeff!"); }
     }
 
+    // 2. Fetch Channels via AllOrigins Proxy (to bypass 403 Forbidden)
     async function loadChannels() {
-        // Switched to allorigins.win proxy which handles 403s better for this specific site
-        const targetUrl = `https://${CONFIG.DOMAIN}/24-7-channels.php`;
-        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+        const target = `https://${CONFIG.DOMAIN}/24-7-channels.php`;
+        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
         
         try {
             const resp = await fetch(proxy);
-            if (!resp.ok) throw new Error('Network error');
             const data = await resp.json();
-            // allorigins returns the HTML inside a 'contents' property
-            processHTML(data.contents);
+            // AllOrigins returns the HTML content as a string inside 'contents'
+            if (data.contents) {
+                processHTML(data.contents);
+            } else {
+                throw new Error("No data returned");
+            }
         } catch (e) { 
             console.error("Fetch error:", e);
-            alert("Failed to load channels. The proxy might be down or the domain changed.");
+            document.getElementById('channel-grid').innerHTML = "<p style='color:red;'>Failed to load channels. The proxy may be down.</p>";
         }
     }
 
+    // 3. Parse HTML and find Channel IDs
     function processHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         allChannels = [];
         
-        // The site updated their CSS classes slightly
-        // We look for links containing 'stream-' or within card containers
-        const links = doc.querySelectorAll('a');
+        // Find all links containing "id="
+        const links = doc.querySelectorAll('a[href*="id="]');
+        
         links.forEach(link => {
-            const href = link.getAttribute('href') || "";
+            const href = link.getAttribute('href');
             const idMatch = href.match(/id=(\d+)/);
-            const title = link.innerText.trim();
+            // Get channel name from data-title, or the text inside the link
+            let title = link.getAttribute('data-title') || link.innerText.trim();
             
             if (idMatch && title && title.length > 1) {
-                allChannels.push({ id: idMatch[1], name: title });
+                // Remove duplicates based on ID
+                if (!allChannels.find(c => c.id === idMatch[1])) {
+                    allChannels.push({ id: idMatch[1], name: title });
+                }
             }
         });
 
-        if(allChannels.length === 0) {
-            // Fallback for different HTML structure
-            doc.querySelectorAll('.card-title, .channel-name').forEach(el => {
-                const parent = el.closest('a');
-                if(parent) {
-                    const id = parent.getAttribute('href').match(/id=(\d+)/);
-                    if(id) allChannels.push({ id: id[1], name: el.innerText.trim() });
-                }
-            });
+        if (allChannels.length === 0) {
+            document.getElementById('channel-grid').innerHTML = "<p style='color:orange;'>No channels found. Site structure might have changed.</p>";
+        } else {
+            renderGrid(allChannels);
         }
-
-        renderGrid(allChannels);
     }
 
+    // 4. Render Grid of Buttons
     function renderGrid(channels) {
         const grid = document.getElementById('channel-grid');
-        if (channels.length === 0) {
-            grid.innerHTML = "<p style='color:red;'>No channels found. Site layout may have changed.</p>";
-            return;
-        }
         grid.innerHTML = channels.map(ch => `
             <div class="card" onclick="selectChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
-                ${ch.name.toUpperCase()}
+                ${ch.name}
             </div>
         `).join('');
     }
 
+    // 5. Search Filtering
     function filterChannels() {
         const q = document.getElementById('search-bar').value.toLowerCase();
         renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(q)));
     }
 
+    // 6. Select Channel & Show Source Options
     function selectChannel(id, name) {
         selectedID = id;
         document.getElementById('target-name').innerText = name;
         showScreen('source-screen');
-        // Common paths used by this provider
+        
         const sources = ['stream', 'cast', 'watch', 'player'];
         document.getElementById('source-options').innerHTML = sources.map(s => `
             <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold;" onclick="startStream('${s}')">SOURCE ${s.toUpperCase()}</button>
         `).join('');
     }
 
+    // 7. Start the Player with the 20-second Strobe Bypass
     function startStream(path) {
         showScreen('player-screen');
         const shield = document.getElementById('click-shield');
@@ -195,18 +196,23 @@
         document.getElementById('shield-ui').classList.remove('hidden');
         fill.style.width = "0%";
         
-        // Note: some sources use .php, some don't. Adjusting for standard stream URL.
+        // Construct the URL: e.g. https://dlhd.link/stream/stream-38.php
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"></iframe>`;
+        
+        // No sandbox used here to allow full player functionality
+        document.getElementById('iframe-container').innerHTML = `
+            <iframe src="${url}" allowfullscreen scrolling="no" style="border:0; width:100%; height:100%;"></iframe>
+        `;
 
         let timeElapsed = 0;
-        const totalDuration = 200; 
+        const totalDuration = 200; // 20 seconds
         
         const strobeInterval = setInterval(() => {
             timeElapsed++;
             fill.style.width = (timeElapsed / 2) + "%";
             timerTxt.innerText = `${Math.ceil((totalDuration - timeElapsed) / 10)}s remaining`;
 
+            // This creates the "flicker" that allows clicks to pass through to the player
             if (shield.style.pointerEvents === "none") {
                 shield.style.pointerEvents = "auto";
                 shield.classList.remove('strobe-open');
@@ -224,12 +230,14 @@
         }, 100);
     }
 
+    // Manual Flicker for mobile or slow devices
     function manualFlicker() {
         const shield = document.getElementById('click-shield');
         shield.style.pointerEvents = "none";
         setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
     }
 
+    // Handle back button behavior
     window.onpopstate = function() {
         if (!document.getElementById('player-screen').classList.contains('hidden')) {
             closePlayer();
@@ -249,6 +257,6 @@
         document.getElementById(id).classList.remove('hidden');
     }
 </script>
+
 </body>
 </html>
-
