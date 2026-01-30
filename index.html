@@ -91,7 +91,8 @@
 </div>
 
 <script>
-    const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
+    // Updated domain to a currently active one
+    const CONFIG = { DOMAIN: "daddylive.mp", PASS: "jeff" };
     let selectedID = "", allChannels = [];
 
     function checkPassword() {
@@ -102,29 +103,65 @@
     }
 
     async function loadChannels() {
-        const proxy = `https://corsproxy.io/?${encodeURIComponent('https://' + CONFIG.DOMAIN + '/24-7-channels.php')}`;
+        // Switched to allorigins.win proxy which handles 403s better for this specific site
+        const targetUrl = `https://${CONFIG.DOMAIN}/24-7-channels.php`;
+        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+        
         try {
             const resp = await fetch(proxy);
-            const html = await resp.text();
-            processHTML(html);
-        } catch (e) { console.log("Fetch error"); }
+            if (!resp.ok) throw new Error('Network error');
+            const data = await resp.json();
+            // allorigins returns the HTML inside a 'contents' property
+            processHTML(data.contents);
+        } catch (e) { 
+            console.error("Fetch error:", e);
+            alert("Failed to load channels. The proxy might be down or the domain changed.");
+        }
     }
 
     function processHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         allChannels = [];
-        doc.querySelectorAll('a.card').forEach(card => {
-            const id = card.getAttribute('href').match(/id=(\d+)/);
-            const title = card.getAttribute('data-title') || card.querySelector('.card__title')?.innerText;
-            if (id && title) allChannels.push({ id: id[1], name: title });
+        
+        // The site updated their CSS classes slightly
+        // We look for links containing 'stream-' or within card containers
+        const links = doc.querySelectorAll('a');
+        links.forEach(link => {
+            const href = link.getAttribute('href') || "";
+            const idMatch = href.match(/id=(\d+)/);
+            const title = link.innerText.trim();
+            
+            if (idMatch && title && title.length > 1) {
+                allChannels.push({ id: idMatch[1], name: title });
+            }
         });
+
+        if(allChannels.length === 0) {
+            // Fallback for different HTML structure
+            doc.querySelectorAll('.card-title, .channel-name').forEach(el => {
+                const parent = el.closest('a');
+                if(parent) {
+                    const id = parent.getAttribute('href').match(/id=(\d+)/);
+                    if(id) allChannels.push({ id: id[1], name: el.innerText.trim() });
+                }
+            });
+        }
+
         renderGrid(allChannels);
     }
 
     function renderGrid(channels) {
         const grid = document.getElementById('channel-grid');
-        grid.innerHTML = channels.map(ch => `<div class="card" onclick="selectChannel('${ch.id}', '${ch.name}')">${ch.name.toUpperCase()}</div>`).join('');
+        if (channels.length === 0) {
+            grid.innerHTML = "<p style='color:red;'>No channels found. Site layout may have changed.</p>";
+            return;
+        }
+        grid.innerHTML = channels.map(ch => `
+            <div class="card" onclick="selectChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
+                ${ch.name.toUpperCase()}
+            </div>
+        `).join('');
     }
 
     function filterChannels() {
@@ -136,7 +173,8 @@
         selectedID = id;
         document.getElementById('target-name').innerText = name;
         showScreen('source-screen');
-        const sources = ['stream', 'cast', 'watch', 'plus', 'casting', 'player'];
+        // Common paths used by this provider
+        const sources = ['stream', 'cast', 'watch', 'player'];
         document.getElementById('source-options').innerHTML = sources.map(s => `
             <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold;" onclick="startStream('${s}')">SOURCE ${s.toUpperCase()}</button>
         `).join('');
@@ -149,7 +187,6 @@
         const timerTxt = document.getElementById('timer-text');
         const tip = document.getElementById('nav-tip');
         
-        // Show Navigation Tip briefly
         tip.style.opacity = "1";
         setTimeout(() => { tip.style.opacity = "0"; }, 4000);
 
@@ -158,11 +195,12 @@
         document.getElementById('shield-ui').classList.remove('hidden');
         fill.style.width = "0%";
         
+        // Note: some sources use .php, some don't. Adjusting for standard stream URL.
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
-        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+        document.getElementById('iframe-container').innerHTML = `<iframe src="${url}" allowfullscreen sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"></iframe>`;
 
         let timeElapsed = 0;
-        const totalDuration = 200; // 20 seconds
+        const totalDuration = 200; 
         
         const strobeInterval = setInterval(() => {
             timeElapsed++;
@@ -192,7 +230,6 @@
         setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
     }
 
-    // Handle browser Back button to exit full player
     window.onpopstate = function() {
         if (!document.getElementById('player-screen').classList.contains('hidden')) {
             closePlayer();
@@ -205,7 +242,6 @@
     }
 
     function showScreen(id) {
-        // Push state so back button works for navigation
         if (id !== 'login-screen') window.history.pushState({screen: id}, "");
         ['login-screen', 'list-screen', 'source-screen', 'player-screen'].forEach(s => {
             document.getElementById(s).classList.add('hidden');
@@ -215,3 +251,4 @@
 </script>
 </body>
 </html>
+
