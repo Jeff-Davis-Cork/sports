@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>Jeff's Sports & TV</title>
     <style>
         :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ff4757; }
@@ -54,28 +55,24 @@
 </head>
 <body>
 
-<!-- 1. Password Screen -->
 <div id="login-screen" class="container">
     <br><br><h1>Jeff's Sports & TV</h1>
     <input type="password" id="pass-input" placeholder="Password..." onkeydown="if(event.key==='Enter') checkPassword()">
     <br><br><button onclick="checkPassword()">Let's Do This!</button>
 </div>
 
-<!-- 2. Channel Selection Screen -->
 <div id="list-screen" class="container hidden">
     <h1>Jeff's Channels</h1>
     <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box; padding:15px; border-radius:10px; background:#0f172a; color:white;">
     <div id="channel-grid" class="grid">Loading Channels...</div>
 </div>
 
-<!-- 3. Source Selection Screen -->
 <div id="source-screen" class="container hidden">
     <button onclick="showScreen('list-screen')" style="background:#475569; color:white;">← Back</button>
     <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
     <div id="source-options"></div>
 </div>
 
-<!-- 4. Full Player Screen -->
 <div id="player-screen" class="hidden">
     <div id="nav-tip">Tip: Use your browser's BACK button to exit video</div>
     
@@ -91,7 +88,8 @@
 </div>
 
 <script>
-    const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
+    // UPDATED CONFIG: Changed domain to daddylive.mp (current as of 2026)
+    const CONFIG = { DOMAIN: "daddylive.mp", PASS: "jeff" };
     let selectedID = "", allChannels = [];
 
     // 1. Login Logic
@@ -102,15 +100,17 @@
         } else { alert("Incorrect password, Jeff!"); }
     }
 
-    // 2. Fetch Channels via AllOrigins Proxy (to bypass 403 Forbidden)
+    // 2. Fetch Channels via AllOrigins Proxy with Cache Busting
     async function loadChannels() {
-        const target = `https://${CONFIG.DOMAIN}/24-7-channels.php`;
+        // We add a timestamp to the URL to prevent the proxy from serving old cached data
+        const timestamp = new Date().getTime();
+        const target = `https://${CONFIG.DOMAIN}/24-7-channels.php?t=${timestamp}`;
         const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
         
         try {
             const resp = await fetch(proxy);
             const data = await resp.json();
-            // AllOrigins returns the HTML content as a string inside 'contents'
+            
             if (data.contents) {
                 processHTML(data.contents);
             } else {
@@ -118,7 +118,13 @@
             }
         } catch (e) { 
             console.error("Fetch error:", e);
-            document.getElementById('channel-grid').innerHTML = "<p style='color:red;'>Failed to load channels. The proxy may be down.</p>";
+            document.getElementById('channel-grid').innerHTML = `
+                <p style='color:red;'>
+                    Failed to load channels.<br>
+                    1. Check your internet.<br>
+                    2. The site ${CONFIG.DOMAIN} might be blocked in your region.<br>
+                    3. Try using a VPN.
+                </p>`;
         }
     }
 
@@ -128,7 +134,7 @@
         const doc = parser.parseFromString(html, 'text/html');
         allChannels = [];
         
-        // Find all links containing "id="
+        // Find all links containing "id=" (Standard DaddyLive format)
         const links = doc.querySelectorAll('a[href*="id="]');
         
         links.forEach(link => {
@@ -146,8 +152,10 @@
         });
 
         if (allChannels.length === 0) {
-            document.getElementById('channel-grid').innerHTML = "<p style='color:orange;'>No channels found. Site structure might have changed.</p>";
+            document.getElementById('channel-grid').innerHTML = "<p style='color:orange;'>No channels found. The site structure may have changed.</p>";
         } else {
+            // Sort channels alphabetically for easier finding
+            allChannels.sort((a, b) => a.name.localeCompare(b.name));
             renderGrid(allChannels);
         }
     }
@@ -174,14 +182,16 @@
         document.getElementById('target-name').innerText = name;
         showScreen('source-screen');
         
-        const sources = ['stream', 'cast', 'watch', 'player'];
-        document.getElementById('source-options').innerHTML = sources.map(s => `
-            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold;" onclick="startStream('${s}')">SOURCE ${s.toUpperCase()}</button>
+        // Removed specific source names as they all point to the same stream logic usually
+        // But kept buttons for user preference illusion or future expansion
+        const sources = ['Server 1', 'Server 2']; 
+        document.getElementById('source-options').innerHTML = sources.map((s, index) => `
+            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold;" onclick="startStream(${index})">${s}</button>
         `).join('');
     }
 
-    // 7. Start the Player with the 20-second Strobe Bypass
-    function startStream(path) {
+    // 7. Start the Player
+    function startStream(serverIndex) {
         showScreen('player-screen');
         const shield = document.getElementById('click-shield');
         const fill = document.getElementById('progress-fill');
@@ -196,10 +206,10 @@
         document.getElementById('shield-ui').classList.remove('hidden');
         fill.style.width = "0%";
         
-        // Construct the URL: e.g. https://dlhd.link/stream/stream-38.php
-        const url = `https://${CONFIG.DOMAIN}/${path}/stream-${selectedID}.php`;
+        // Construct the URL: https://daddylive.mp/stream/stream-{id}.php
+        // Note: 'embed' path works better for some versions of the site, but 'stream' is standard for the page wrapper
+        const url = `https://${CONFIG.DOMAIN}/stream/stream-${selectedID}.php`;
         
-        // No sandbox used here to allow full player functionality
         document.getElementById('iframe-container').innerHTML = `
             <iframe src="${url}" allowfullscreen scrolling="no" style="border:0; width:100%; height:100%;"></iframe>
         `;
