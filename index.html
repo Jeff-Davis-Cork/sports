@@ -13,7 +13,6 @@
         .container { max-width: 1100px; margin: 0 auto; padding: 20px; text-align: center; }
         h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 20px; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
         
-        /* Inputs & Buttons */
         input { width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 1.2rem; outline: none; margin-bottom: 20px; transition: 0.3s; }
         input:focus { border-color: var(--accent); }
         
@@ -24,7 +23,7 @@
         .source-btn { 
             display: block; width: 100%; max-width: 500px; margin: 10px auto; 
             background: #1e293b; color: #fff; border: 1px solid #334155;
-            text-align: left; position: relative;
+            text-align: left; position: relative; padding: 15px;
         }
         .source-btn:hover { border-color: var(--accent); background: #25334d; }
         .source-tag { float: right; color: var(--accent); font-size: 0.8rem; opacity: 0.7; }
@@ -39,7 +38,6 @@
         #iframe-wrapper { flex-grow: 1; width: 100%; height: 100%; position: relative; }
         iframe { width: 100%; height: 100%; border: none; }
         
-        /* Controls Bar */
         #controls-bar { height: 60px; background: #161e35; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #334155; }
         .control-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; margin-left: 10px; }
     </style>
@@ -76,17 +74,18 @@
 </div>
 
 <script>
-    // CONFIG
-    const CONFIG = { 
-        DOMAIN: "dlhd.link", // Main domain for Player Links
-        PASS: "jeff"
-    };
+    const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
     
-    // We use a backup list of domains just for FETCHING the channel list 
-    // in case dlhd.link blocks the proxy.
-    const FETCH_DOMAINS = ["dlhd.link", "dlhd.dad", "daddylive.mp"];
-    
-    // The 6 exact prefixes you requested
+    // REDUNDANCY: If one proxy fails, we try the next.
+    // 1. AllOrigins (Standard)
+    // 2. CorsProxy.io (Fast backup)
+    // 3. CodeTabs (Reliable backup)
+    const PROXY_LIST = [
+        url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+    ];
+
     const SOURCE_PREFIXES = [
         { label: "Player 1 (Stream)", path: "stream" },
         { label: "Player 2 (Cast)",   path: "cast" },
@@ -100,7 +99,6 @@
     let currentID = "";
     let currentPath = "";
 
-    // 1. Login
     function checkPassword() {
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
@@ -108,34 +106,42 @@
         } else { alert("Access Denied"); }
     }
 
-    // 2. Load Channels (Robust)
     async function loadChannels() {
         const status = document.getElementById('status-msg');
-        status.innerText = "Fetching channels...";
-        
+        status.innerText = "Connecting to dlhd.link...";
+        status.style.color = "white";
+
+        const timestamp = new Date().getTime();
+        const targetURL = `https://${CONFIG.DOMAIN}/24-7-channels.php?t=${timestamp}`;
         let success = false;
-        // Try multiple domains to get the list
-        for (let domain of FETCH_DOMAINS) {
+
+        // Try every proxy in the list until one works
+        for (let i = 0; i < PROXY_LIST.length; i++) {
             try {
-                const timestamp = new Date().getTime();
-                const target = `https://${domain}/24-7-channels.php?t=${timestamp}`;
-                const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
+                const proxyUrl = PROXY_LIST[i](targetURL);
+                console.log(`Trying Proxy ${i+1}: ${proxyUrl}`);
                 
-                const resp = await fetch(proxy);
+                const resp = await fetch(proxyUrl);
                 const data = await resp.json();
                 
-                if (data.contents && data.contents.length > 500) {
-                    processHTML(data.contents);
-                    status.innerText = `Connected via ${domain}`;
+                // Handle different proxy response formats
+                const html = data.contents || data.text || data; 
+                
+                if (html && html.length > 500) {
+                    processHTML(html);
+                    status.innerText = `Connected via Proxy ${i+1}`;
                     status.style.color = "#22c55e";
                     success = true;
-                    break; 
+                    break; // It worked! Stop looping.
                 }
-            } catch (e) { console.log(`Failed to fetch from ${domain}`); }
+            } catch (e) {
+                console.error(`Proxy ${i+1} failed:`, e);
+                status.innerText = `Proxy ${i+1} failed. Trying Proxy ${i+2}...`;
+            }
         }
 
         if (!success) {
-            status.innerText = "Failed to load list. Proxy may be down.";
+            status.innerHTML = "Failed to load list. <button onclick='loadChannels()'>Retry</button>";
             status.style.color = "#ef4444";
         }
     }
@@ -145,18 +151,23 @@
         const doc = parser.parseFromString(html, 'text/html');
         const tempChannels = [];
         
+        // UPDATED: Finds links matching the exact structure you provided:
+        // <a href="/watch.php?id=135" data-title="arena sport 2 premium">
         const links = doc.querySelectorAll('a');
+        
         links.forEach(link => {
             const href = link.getAttribute('href');
             if (!href) return;
 
-            // Matches ?id=55 OR stream-55.php
-            const match = href.match(/(?:id=|stream-)(\d+)/);
-            let name = link.getAttribute('data-title') || link.innerText.trim();
+            // Regex for: /watch.php?id=123   OR   id=123
+            const idMatch = href.match(/id=(\d+)/);
             
-            if (match && name) {
-                if (!tempChannels.find(c => c.id === match[1])) {
-                    tempChannels.push({ id: match[1], name: name });
+            // Get title from data-title (preferred) or text
+            const title = link.getAttribute('data-title') || link.innerText.trim();
+            
+            if (idMatch && title) {
+                if (!tempChannels.find(c => c.id === idMatch[1])) {
+                    tempChannels.push({ id: idMatch[1], name: title });
                 }
             }
         });
@@ -164,6 +175,8 @@
         if (tempChannels.length > 0) {
             allChannels = tempChannels.sort((a, b) => a.name.localeCompare(b.name));
             renderGrid(allChannels);
+        } else {
+            document.getElementById('channel-grid').innerHTML = "<p>No channels found. Check Console for errors.</p>";
         }
     }
 
@@ -180,13 +193,11 @@
         renderGrid(allChannels.filter(c => c.name.toLowerCase().includes(q)));
     }
 
-    // 3. Select Channel & Show Sources
     function selectChannel(id, name) {
         currentID = id;
         document.getElementById('target-name').innerText = name;
         showScreen('source-screen');
         
-        // Generate the 6 buttons
         const list = document.getElementById('source-list');
         list.innerHTML = SOURCE_PREFIXES.map((src, index) => `
             <button class="source-btn" onclick="startStream('${src.path}')">
@@ -196,22 +207,14 @@
         `).join('');
     }
 
-    // 4. Player Logic
     function startStream(path) {
         currentPath = path;
         showScreen('player-screen');
-        
-        // Construct URL based on your specific requirements
-        // e.g. https://dlhd.link/cast/stream-38.php
+        // The EXACT link format you requested:
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${currentID}.php`;
         
         document.getElementById('iframe-wrapper').innerHTML = `
-            <iframe 
-                src="${url}" 
-                allowfullscreen 
-                scrolling="no" 
-                allow="autoplay; encrypted-media; picture-in-picture">
-            </iframe>
+            <iframe src="${url}" width="100%" height="100%" style="border:0;" allowfullscreen></iframe>
         `;
     }
 
