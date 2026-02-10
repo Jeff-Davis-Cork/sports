@@ -6,264 +6,160 @@
     <meta name="referrer" content="no-referrer">
     <title>Jeff's Sports & TV</title>
     <style>
-        :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ff4757; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow-x: hidden; }
+        :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .hidden { display: none !important; }
         
-        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
-        h1 { color: var(--accent); font-size: 2.5rem; }
-        input { width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 1.2rem; outline: none; }
-        button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; text-align: center; }
+        h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 20px; }
+        
+        /* Inputs & Buttons */
+        input { width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 1.2rem; outline: none; margin-bottom: 20px; }
+        button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: 0.2s; }
+        button:hover { transform: scale(1.05); }
 
-        /* Grid UI */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: var(--card); padding: 30px 15px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; min-height: 60px; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.9rem; }
-        .card:hover { border-color: var(--accent); transform: scale(1.05); }
+        /* Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.85rem; min-height: 50px; }
+        .card:hover { border-color: var(--accent); background: #1e293b; }
 
-        /* Full Screen Player */
-        #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; }
+        /* Player Screen */
+        #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: flex; flex-direction: column; }
+        
+        /* The Iframe Container */
+        #iframe-wrapper { flex-grow: 1; width: 100%; height: 100%; position: relative; }
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* Back Navigation Message */
-        #nav-tip {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 100010; background: rgba(0,0,0,0.8); color: #fff;
-            padding: 10px 20px; border-radius: 30px; border: 1px solid var(--accent);
-            font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.5s;
-        }
-
-        /* 20-Second Strobe Shield */
-        #click-shield {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 100000; background: rgba(0,0,0,0.96);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        #click-shield.strobe-open { background: transparent !important; border: 8px solid var(--accent); box-sizing: border-box; }
-
-        /* Large Instructions */
-        .instruction-box { background: rgba(10, 15, 30, 0.95); padding: 40px; border-radius: 20px; border: 4px solid var(--accent); max-width: 85%; }
-        .urgent-text { font-size: 3rem; color: #fff; font-weight: 900; animation: flash-accent 0.8s infinite; line-height: 1.1; margin: 20px 0; }
-        
-        #progress-wrap { width: 100%; height: 15px; background: #222; border-radius: 10px; margin-top: 20px; overflow: hidden; }
-        #progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
-
-        @keyframes flash-accent {
-            0%, 100% { color: #fff; transform: scale(1); }
-            50% { color: var(--accent); transform: scale(1.03); }
+        /* Controls Bar */
+        #controls-bar {
+            height: 60px; background: #161e35; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #334155;
         }
     </style>
 </head>
 <body>
 
 <div id="login-screen" class="container">
-    <br><br><h1>Jeff's Sports & TV</h1>
+    <br><br><h1>Jeff's Sports</h1>
     <input type="password" id="pass-input" placeholder="Password..." onkeydown="if(event.key==='Enter') checkPassword()">
-    <br><br><button onclick="checkPassword()">Let's Do This!</button>
+    <br><button onclick="checkPassword()">Enter</button>
 </div>
 
 <div id="list-screen" class="container hidden">
-    <h1>Jeff's Channels</h1>
-    <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()" style="width:100%; max-width:100%; border:2px solid #38bdf8; box-sizing:border-box; padding:15px; border-radius:10px; background:#0f172a; color:white;">
-    <div id="channel-grid" class="grid">Loading Channels...</div>
-</div>
-
-<div id="source-screen" class="container hidden">
-    <button onclick="showScreen('list-screen')" style="background:#475569; color:white;">← Back</button>
-    <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
-    <div id="source-options"></div>
+    <h1>Live Channels</h1>
+    <input type="text" id="search-bar" placeholder="Search..." onkeyup="filterChannels()">
+    <div id="channel-grid" class="grid">Loading...</div>
 </div>
 
 <div id="player-screen" class="hidden">
-    <div id="nav-tip">Tip: Use your browser's BACK button to exit video</div>
-    
-    <div id="click-shield" onclick="manualFlicker()">
-        <div id="shield-ui" class="instruction-box">
-            <h2 style="color: var(--accent); margin: 0;">PROTECTION BYPASS ACTIVE</h2>
-            <div id="progress-wrap"><div id="progress-fill"></div></div>
-            <div class="urgent-text">CLICK ANY UNMUTE OR PLAY BUTTONS NOW!</div>
-            <h3 id="timer-text" style="color: #fff; font-size: 1.5rem;">20s remaining</h3>
+    <div id="iframe-wrapper">
         </div>
+    <div id="controls-bar">
+        <button onclick="closePlayer()" style="background:#ef4444; color:white; padding: 10px 20px; font-size: 0.9rem;">Exit</button>
+        <span style="color:#aaa; font-size: 0.9rem;">Ads will open in new tabs. Close them to play.</span>
+        <button onclick="reloadStream()" style="background:#3b82f6; color:white; padding: 10px 20px; font-size: 0.9rem;">Reload</button>
     </div>
-    <div id="iframe-container" style="width:100%; height:100%;"></div>
 </div>
 
 <script>
-    // UPDATED CONFIG: Changed domain to daddylive.mp (current as of 2026)
-    const CONFIG = { DOMAIN: "daddylive.mp", PASS: "jeff" };
-    let selectedID = "", allChannels = [];
+    // CONFIG: Uses dlhd.link as requested
+    const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
+    let allChannels = [];
+    let currentID = "";
 
-    // 1. Login Logic
     function checkPassword() {
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
             loadChannels();
-        } else { alert("Incorrect password, Jeff!"); }
+        } else { alert("Wrong password"); }
     }
 
-    // 2. Fetch Channels via AllOrigins Proxy with Cache Busting
     async function loadChannels() {
-        // We add a timestamp to the URL to prevent the proxy from serving old cached data
+        // Added timestamp to force fresh channel list
         const timestamp = new Date().getTime();
         const target = `https://${CONFIG.DOMAIN}/24-7-channels.php?t=${timestamp}`;
         const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
-        
+
         try {
             const resp = await fetch(proxy);
             const data = await resp.json();
-            
-            if (data.contents) {
-                processHTML(data.contents);
-            } else {
-                throw new Error("No data returned");
-            }
-        } catch (e) { 
-            console.error("Fetch error:", e);
-            document.getElementById('channel-grid').innerHTML = `
-                <p style='color:red;'>
-                    Failed to load channels.<br>
-                    1. Check your internet.<br>
-                    2. The site ${CONFIG.DOMAIN} might be blocked in your region.<br>
-                    3. Try using a VPN.
-                </p>`;
+            if (data.contents) processHTML(data.contents);
+        } catch (e) {
+            document.getElementById('channel-grid').innerHTML = "<p style='color:red'>Error loading channels. Proxy may be down.</p>";
         }
     }
 
-    // 3. Parse HTML and find Channel IDs
     function processHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         allChannels = [];
         
-        // Find all links containing "id=" (Standard DaddyLive format)
-        const links = doc.querySelectorAll('a[href*="id="]');
-        
+        // UPDATED: Finds links with "id=" OR "stream-" to be more robust
+        const links = doc.querySelectorAll('a');
         links.forEach(link => {
             const href = link.getAttribute('href');
-            const idMatch = href.match(/id=(\d+)/);
-            // Get channel name from data-title, or the text inside the link
-            let title = link.getAttribute('data-title') || link.innerText.trim();
+            if (!href) return;
+
+            // Regex matches both ?id=123 AND stream-123.php
+            const idMatch = href.match(/(?:id=|stream-)(\d+)/);
+            const name = link.getAttribute('data-title') || link.innerText.trim();
             
-            if (idMatch && title && title.length > 1) {
-                // Remove duplicates based on ID
+            if (idMatch && name && name.length > 1) {
+                // Avoid duplicates
                 if (!allChannels.find(c => c.id === idMatch[1])) {
-                    allChannels.push({ id: idMatch[1], name: title });
+                    allChannels.push({ id: idMatch[1], name: name });
                 }
             }
         });
-
-        if (allChannels.length === 0) {
-            document.getElementById('channel-grid').innerHTML = "<p style='color:orange;'>No channels found. The site structure may have changed.</p>";
-        } else {
-            // Sort channels alphabetically for easier finding
+        
+        if (allChannels.length > 0) {
             allChannels.sort((a, b) => a.name.localeCompare(b.name));
             renderGrid(allChannels);
+        } else {
+            document.getElementById('channel-grid').innerHTML = "<p style='color:orange'>No channels found. Site structure changed.</p>";
         }
     }
 
-    // 4. Render Grid of Buttons
-    function renderGrid(channels) {
-        const grid = document.getElementById('channel-grid');
-        grid.innerHTML = channels.map(ch => `
-            <div class="card" onclick="selectChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
-                ${ch.name}
-            </div>
+    function renderGrid(list) {
+        document.getElementById('channel-grid').innerHTML = list.map(ch => `
+            <div class="card" onclick="openStream('${ch.id}')">${ch.name}</div>
         `).join('');
     }
 
-    // 5. Search Filtering
     function filterChannels() {
         const q = document.getElementById('search-bar').value.toLowerCase();
-        renderGrid(allChannels.filter(ch => ch.name.toLowerCase().includes(q)));
+        renderGrid(allChannels.filter(c => c.name.toLowerCase().includes(q)));
     }
 
-    // 6. Select Channel & Show Source Options
-    function selectChannel(id, name) {
-        selectedID = id;
-        document.getElementById('target-name').innerText = name;
-        showScreen('source-screen');
-        
-        // Removed specific source names as they all point to the same stream logic usually
-        // But kept buttons for user preference illusion or future expansion
-        const sources = ['Server 1', 'Server 2']; 
-        document.getElementById('source-options').innerHTML = sources.map((s, index) => `
-            <button style="display:block; width:100%; max-width:400px; margin:10px auto; padding:20px; border-radius:15px; background:#161e35; color:white; border:2px solid #38bdf8; cursor:pointer; font-weight:bold;" onclick="startStream(${index})">${s}</button>
-        `).join('');
-    }
-
-    // 7. Start the Player
-    function startStream(serverIndex) {
+    function openStream(id) {
+        currentID = id;
         showScreen('player-screen');
-        const shield = document.getElementById('click-shield');
-        const fill = document.getElementById('progress-fill');
-        const timerTxt = document.getElementById('timer-text');
-        const tip = document.getElementById('nav-tip');
         
-        tip.style.opacity = "1";
-        setTimeout(() => { tip.style.opacity = "0"; }, 4000);
-
-        shield.style.pointerEvents = "auto";
-        shield.classList.remove('strobe-open');
-        document.getElementById('shield-ui').classList.remove('hidden');
-        fill.style.width = "0%";
+        const container = document.getElementById('iframe-wrapper');
         
-        // Construct the URL: https://daddylive.mp/stream/stream-{id}.php
-        // Note: 'embed' path works better for some versions of the site, but 'stream' is standard for the page wrapper
-        const url = `https://${CONFIG.DOMAIN}/stream/stream-${selectedID}.php`;
+        // Uses stream-{id}.php structure without sandbox
+        const url = `https://${CONFIG.DOMAIN}/stream/stream-${id}.php`;
         
-        document.getElementById('iframe-container').innerHTML = `
-            <iframe src="${url}" allowfullscreen scrolling="no" style="border:0; width:100%; height:100%;"></iframe>
+        container.innerHTML = `
+            <iframe 
+                src="${url}" 
+                allowfullscreen 
+                scrolling="no"
+                allow="autoplay; encrypted-media">
+            </iframe>
         `;
-
-        let timeElapsed = 0;
-        const totalDuration = 200; // 20 seconds
-        
-        const strobeInterval = setInterval(() => {
-            timeElapsed++;
-            fill.style.width = (timeElapsed / 2) + "%";
-            timerTxt.innerText = `${Math.ceil((totalDuration - timeElapsed) / 10)}s remaining`;
-
-            // This creates the "flicker" that allows clicks to pass through to the player
-            if (shield.style.pointerEvents === "none") {
-                shield.style.pointerEvents = "auto";
-                shield.classList.remove('strobe-open');
-            } else {
-                shield.style.pointerEvents = "none";
-                shield.classList.add('strobe-open');
-            }
-
-            if (timeElapsed >= totalDuration) {
-                clearInterval(strobeInterval);
-                shield.style.pointerEvents = "auto";
-                shield.classList.add('strobe-open');
-                document.getElementById('shield-ui').classList.add('hidden');
-            }
-        }, 100);
     }
 
-    // Manual Flicker for mobile or slow devices
-    function manualFlicker() {
-        const shield = document.getElementById('click-shield');
-        shield.style.pointerEvents = "none";
-        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
+    function reloadStream() {
+        if(currentID) openStream(currentID);
     }
-
-    // Handle back button behavior
-    window.onpopstate = function() {
-        if (!document.getElementById('player-screen').classList.contains('hidden')) {
-            closePlayer();
-        }
-    };
 
     function closePlayer() {
-        document.getElementById('iframe-container').innerHTML = "";
-        showScreen('source-screen');
+        document.getElementById('iframe-wrapper').innerHTML = ""; 
+        showScreen('list-screen');
     }
 
     function showScreen(id) {
-        if (id !== 'login-screen') window.history.pushState({screen: id}, "");
-        ['login-screen', 'list-screen', 'source-screen', 'player-screen'].forEach(s => {
-            document.getElementById(s).classList.add('hidden');
-        });
+        document.querySelectorAll('.container, #player-screen').forEach(el => el.classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
     }
 </script>
