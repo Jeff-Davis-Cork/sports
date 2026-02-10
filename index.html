@@ -6,32 +6,43 @@
     <meta name="referrer" content="no-referrer">
     <title>Jeff's Sports & TV</title>
     <style>
-        :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ef4444; --success: #22c55e; }
+        :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ef4444; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow-x: hidden; }
         .hidden { display: none !important; }
         
-        .container { max-width: 1100px; margin: 0 auto; padding: 20px; text-align: center; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
         h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 20px; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
         
-        input { width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 1.2rem; outline: none; margin-bottom: 20px; transition: 0.3s; }
+        /* Inputs */
+        input { 
+            width: 100%; max-width: 300px; padding: 15px; border-radius: 12px; 
+            border: 2px solid #334155; background: #0f172a; color: white; 
+            font-size: 1.5rem; text-align: center; outline: none; margin-bottom: 20px; 
+            transition: 0.3s; 
+        }
         input:focus { border-color: var(--accent); }
         
-        button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: 0.2s; }
+        /* Buttons */
+        button { 
+            padding: 15px 30px; background: var(--accent); color: #0a0f1e; 
+            border: none; border-radius: 12px; cursor: pointer; font-weight: bold; 
+            font-size: 1.1rem; transition: 0.2s; margin: 5px;
+        }
         button:hover { transform: scale(1.05); filter: brightness(1.1); }
         
+        .btn-outline {
+            background: transparent; border: 2px solid var(--accent); color: var(--accent);
+        }
+        .btn-outline:hover { background: var(--accent); color: #000; }
+
         /* Source Buttons */
         .source-btn { 
-            display: block; width: 100%; max-width: 500px; margin: 10px auto; 
+            display: block; width: 100%; max-width: 400px; margin: 10px auto; 
             background: #1e293b; color: #fff; border: 1px solid #334155;
             text-align: left; position: relative; padding: 15px;
         }
         .source-btn:hover { border-color: var(--accent); background: #25334d; }
         .source-tag { float: right; color: var(--accent); font-size: 0.8rem; opacity: 0.7; }
-
-        /* Grid */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: var(--card); padding: 20px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.85rem; min-height: 50px; }
-        .card:hover { border-color: var(--accent); background: #1e293b; transform: translateY(-3px); }
 
         /* Player Screen */
         #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: flex; flex-direction: column; }
@@ -39,7 +50,9 @@
         iframe { width: 100%; height: 100%; border: none; }
         
         #controls-bar { height: 60px; background: #161e35; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #334155; }
-        .control-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; margin-left: 10px; }
+        
+        /* Info Box */
+        .info-box { background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; margin: 20px 0; font-size: 0.9rem; color: #aaa; }
     </style>
 </head>
 <body>
@@ -47,45 +60,55 @@
 <div id="login-screen" class="container">
     <br><br><h1>Jeff's Sports</h1>
     <input type="password" id="pass-input" placeholder="Password..." onkeydown="if(event.key==='Enter') checkPassword()">
-    <br><button onclick="checkPassword()">Access Channels</button>
+    <br><button onclick="checkPassword()">Login</button>
 </div>
 
-<div id="list-screen" class="container hidden">
-    <h1>Live Channels</h1>
-    <div id="status-msg" style="color:#aaa; margin-bottom:10px;">Waiting for input...</div>
-    <input type="text" id="search-bar" placeholder="Search channels..." onkeyup="filterChannels()">
-    <div id="channel-grid" class="grid"></div>
+<div id="dialer-screen" class="container hidden">
+    <h1>Select Channel</h1>
+    
+    <div class="info-box">
+        <p><strong>Note:</strong> The automatic channel list is currently blocked by the source site.</p>
+        <p>Please <strong>enter the Channel ID</strong> manually below.</p>
+        <a href="https://dlhd.link/24-7-channels.php" target="_blank" style="color: var(--accent); text-decoration: underline;">
+            Click here to find Channel IDs
+        </a>
+    </div>
+
+    <input type="number" id="channel-id-input" placeholder="ID (e.g. 55)" onkeydown="if(event.key==='Enter') confirmChannel()">
+    <br>
+    <button onclick="confirmChannel()">Select Channel</button>
+    
+    <div style="margin-top: 30px;">
+        <h3>Common IDs (Try these)</h3>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+            <button class="btn-outline" onclick="setID(15)">Chan 15</button>
+            <button class="btn-outline" onclick="setID(24)">Chan 24</button>
+            <button class="btn-outline" onclick="setID(38)">Chan 38</button>
+            <button class="btn-outline" onclick="setID(50)">Chan 50</button>
+        </div>
+    </div>
 </div>
 
 <div id="source-screen" class="container hidden">
-    <button onclick="showScreen('list-screen')" style="background:#475569; color:white; margin-bottom:20px;">← Back to Channels</button>
-    <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
-    <p style="color:#aaa;">Select a server below. If one buffers, try another.</p>
+    <button onclick="showScreen('dialer-screen')" style="background:#475569; color:white; margin-bottom:20px;">← Back</button>
+    <h2 style="color: var(--accent);">Playing Channel <span id="display-id"></span></h2>
+    <p style="color:#aaa;">Select a player below:</p>
     <div id="source-list"></div>
 </div>
 
 <div id="player-screen" class="hidden">
     <div id="iframe-wrapper"></div>
     <div id="controls-bar">
-        <button class="control-btn" onclick="closePlayer()" style="background:#ef4444; color:white;">Exit</button>
-        <span style="color:#94a3b8; font-size: 0.8rem;">Ad Blocker? Click video twice to play.</span>
-        <button class="control-btn" onclick="reloadStream()" style="background:#3b82f6; color:white;">Reload</button>
+        <button onclick="closePlayer()" style="background:#ef4444; color:white; padding: 8px 16px; border-radius: 8px; border:none; cursor:pointer;">Exit</button>
+        <span style="color:#94a3b8; font-size: 0.8rem;">Click video twice to play</span>
+        <button onclick="reloadStream()" style="background:#3b82f6; color:white; padding: 8px 16px; border-radius: 8px; border:none; cursor:pointer;">Reload</button>
     </div>
 </div>
 
 <script>
     const CONFIG = { DOMAIN: "dlhd.link", PASS: "jeff" };
-    
-    // REDUNDANCY: If one proxy fails, we try the next.
-    // 1. AllOrigins (Standard)
-    // 2. CorsProxy.io (Fast backup)
-    // 3. CodeTabs (Reliable backup)
-    const PROXY_LIST = [
-        url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-    ];
 
+    // The 6 exact prefixes you requested
     const SOURCE_PREFIXES = [
         { label: "Player 1 (Stream)", path: "stream" },
         { label: "Player 2 (Cast)",   path: "cast" },
@@ -95,109 +118,34 @@
         { label: "Player 6 (Player)",  path: "player" }
     ];
 
-    let allChannels = [];
     let currentID = "";
     let currentPath = "";
 
+    // 1. Login
     function checkPassword() {
         if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
-            showScreen('list-screen');
-            loadChannels();
-        } else { alert("Access Denied"); }
+            showScreen('dialer-screen');
+        } else { alert("Incorrect Password"); }
     }
 
-    async function loadChannels() {
-        const status = document.getElementById('status-msg');
-        status.innerText = "Connecting to dlhd.link...";
-        status.style.color = "white";
-
-        const timestamp = new Date().getTime();
-        const targetURL = `https://${CONFIG.DOMAIN}/24-7-channels.php?t=${timestamp}`;
-        let success = false;
-
-        // Try every proxy in the list until one works
-        for (let i = 0; i < PROXY_LIST.length; i++) {
-            try {
-                const proxyUrl = PROXY_LIST[i](targetURL);
-                console.log(`Trying Proxy ${i+1}: ${proxyUrl}`);
-                
-                const resp = await fetch(proxyUrl);
-                const data = await resp.json();
-                
-                // Handle different proxy response formats
-                const html = data.contents || data.text || data; 
-                
-                if (html && html.length > 500) {
-                    processHTML(html);
-                    status.innerText = `Connected via Proxy ${i+1}`;
-                    status.style.color = "#22c55e";
-                    success = true;
-                    break; // It worked! Stop looping.
-                }
-            } catch (e) {
-                console.error(`Proxy ${i+1} failed:`, e);
-                status.innerText = `Proxy ${i+1} failed. Trying Proxy ${i+2}...`;
-            }
-        }
-
-        if (!success) {
-            status.innerHTML = "Failed to load list. <button onclick='loadChannels()'>Retry</button>";
-            status.style.color = "#ef4444";
-        }
+    // 2. Manual Entry Logic
+    function setID(id) {
+        document.getElementById('channel-id-input').value = id;
+        confirmChannel();
     }
 
-    function processHTML(html) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const tempChannels = [];
+    function confirmChannel() {
+        const id = document.getElementById('channel-id-input').value;
+        if (!id) { alert("Please enter a Channel ID number."); return; }
         
-        // UPDATED: Finds links matching the exact structure you provided:
-        // <a href="/watch.php?id=135" data-title="arena sport 2 premium">
-        const links = doc.querySelectorAll('a');
-        
-        links.forEach(link => {
-            const href = link.getAttribute('href');
-            if (!href) return;
-
-            // Regex for: /watch.php?id=123   OR   id=123
-            const idMatch = href.match(/id=(\d+)/);
-            
-            // Get title from data-title (preferred) or text
-            const title = link.getAttribute('data-title') || link.innerText.trim();
-            
-            if (idMatch && title) {
-                if (!tempChannels.find(c => c.id === idMatch[1])) {
-                    tempChannels.push({ id: idMatch[1], name: title });
-                }
-            }
-        });
-
-        if (tempChannels.length > 0) {
-            allChannels = tempChannels.sort((a, b) => a.name.localeCompare(b.name));
-            renderGrid(allChannels);
-        } else {
-            document.getElementById('channel-grid').innerHTML = "<p>No channels found. Check Console for errors.</p>";
-        }
-    }
-
-    function renderGrid(list) {
-        document.getElementById('channel-grid').innerHTML = list.map(ch => `
-            <div class="card" onclick="selectChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
-                ${ch.name}
-            </div>
-        `).join('');
-    }
-
-    function filterChannels() {
-        const q = document.getElementById('search-bar').value.toLowerCase();
-        renderGrid(allChannels.filter(c => c.name.toLowerCase().includes(q)));
-    }
-
-    function selectChannel(id, name) {
         currentID = id;
-        document.getElementById('target-name').innerText = name;
+        document.getElementById('display-id').innerText = id;
         showScreen('source-screen');
-        
+        renderSources();
+    }
+
+    // 3. Render Source Buttons
+    function renderSources() {
         const list = document.getElementById('source-list');
         list.innerHTML = SOURCE_PREFIXES.map((src, index) => `
             <button class="source-btn" onclick="startStream('${src.path}')">
@@ -207,10 +155,12 @@
         `).join('');
     }
 
+    // 4. Player Logic
     function startStream(path) {
         currentPath = path;
         showScreen('player-screen');
-        // The EXACT link format you requested:
+        
+        // Exact URL structure: https://dlhd.link/{path}/stream-{id}.php
         const url = `https://${CONFIG.DOMAIN}/${path}/stream-${currentID}.php`;
         
         document.getElementById('iframe-wrapper').innerHTML = `
