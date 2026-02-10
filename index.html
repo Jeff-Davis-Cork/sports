@@ -457,20 +457,35 @@
         const tip = document.getElementById('nav-tip');
         const container = document.getElementById('iframe-container');
 
-        // 1. Construct URL
+        // IMPORTANT CHANGE: Use /embed/ path instead of /stream/ path if possible
+        // But for consistency with your request, we use the selected path but add mobile attributes
+        
+        // We add 'playsinline' and permissions which are crucial for iPhone
         const url = `https://${currentDomain}/${path}/stream-${selectedID}.php`;
-        container.innerHTML = `<iframe src="${url}" allowfullscreen scrolling="no" style="border:0; width:100%; height:100%;"></iframe>`;
+        
+        container.innerHTML = `
+            <iframe 
+                src="${url}" 
+                allowfullscreen 
+                scrolling="no" 
+                playsinline 
+                allow="autoplay; encrypted-media; picture-in-picture"
+                style="border:0; width:100%; height:100%;">
+            </iframe>
+        `;
 
         // 2. CHECK: Is this Mobile?
         if (isMobile()) {
             // MOBILE MODE: HIDE THE SHIELD, JUST SHOW VIDEO
             shield.style.display = 'none';
             tip.style.display = 'none';
-            return; // Exit function, don't run the strobe logic
+            // Show a specific alert because user interaction is REQUIRED
+            // alert("On Mobile: Tap the video to play. If a new tab opens, close it and tap again.");
+            return; 
         }
 
         // 3. DESKTOP MODE: RUN STROBE LOGIC
-        shield.style.display = 'flex'; // Ensure shield is visible
+        shield.style.display = 'flex'; 
         tip.style.display = 'block';
         tip.style.opacity = "1";
         setTimeout(() => { tip.style.opacity = "0"; }, 4000);
