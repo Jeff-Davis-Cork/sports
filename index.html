@@ -20,14 +20,18 @@
         button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: 0.2s; }
         button:hover { transform: scale(1.05); filter: brightness(1.1); }
         
-        /* Status Bar */
-        #status-msg { margin-bottom: 15px; font-size: 0.9rem; min-height: 20px; }
-        .status-error { color: var(--danger); }
-        .status-ok { color: var(--success); }
+        /* Source Buttons */
+        .source-btn { 
+            display: block; width: 100%; max-width: 500px; margin: 10px auto; 
+            background: #1e293b; color: #fff; border: 1px solid #334155;
+            text-align: left; position: relative;
+        }
+        .source-btn:hover { border-color: var(--accent); background: #25334d; }
+        .source-tag { float: right; color: var(--accent); font-size: 0.8rem; opacity: 0.7; }
 
         /* Grid */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: var(--card); padding: 20px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.85rem; min-height: 50px; position: relative; overflow: hidden; }
+        .card { background: var(--card); padding: 20px; border-radius: 15px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.85rem; min-height: 50px; }
         .card:hover { border-color: var(--accent); background: #1e293b; transform: translateY(-3px); }
 
         /* Player Screen */
@@ -36,8 +40,8 @@
         iframe { width: 100%; height: 100%; border: none; }
         
         /* Controls Bar */
-        #controls-bar { height: 60px; background: #161e35; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #334155; z-index: 10000; }
-        .control-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; }
+        #controls-bar { height: 60px; background: #161e35; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid #334155; }
+        .control-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -50,155 +54,124 @@
 
 <div id="list-screen" class="container hidden">
     <h1>Live Channels</h1>
-    <div id="status-msg" style="color:#aaa;">Waiting for input...</div>
-    
+    <div id="status-msg" style="color:#aaa; margin-bottom:10px;">Waiting for input...</div>
     <input type="text" id="search-bar" placeholder="Search channels..." onkeyup="filterChannels()">
-    
-    <div style="margin-bottom: 15px; font-size: 0.8rem; color: #666;">
-        Source: <span id="current-domain">Auto</span> 
-        <button onclick="cycleDomain()" style="padding: 5px 10px; font-size: 0.7rem; margin-left: 10px; background: #334155; color: white;">Switch Mirror</button>
-    </div>
-
     <div id="channel-grid" class="grid"></div>
+</div>
+
+<div id="source-screen" class="container hidden">
+    <button onclick="showScreen('list-screen')" style="background:#475569; color:white; margin-bottom:20px;">← Back to Channels</button>
+    <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
+    <p style="color:#aaa;">Select a server below. If one buffers, try another.</p>
+    <div id="source-list"></div>
 </div>
 
 <div id="player-screen" class="hidden">
     <div id="iframe-wrapper"></div>
     <div id="controls-bar">
         <button class="control-btn" onclick="closePlayer()" style="background:#ef4444; color:white;">Exit</button>
-        <span style="color:#94a3b8; font-size: 0.8rem; display:none; display: md-block;">Popup blocker active? Click video twice.</span>
+        <span style="color:#94a3b8; font-size: 0.8rem;">Ad Blocker? Click video twice to play.</span>
         <button class="control-btn" onclick="reloadStream()" style="background:#3b82f6; color:white;">Reload</button>
     </div>
 </div>
 
 <script>
-    // --- CONFIGURATION ---
-    // We list multiple domains. If one fails, the script tries the next.
-    const DOMAINS = ["dlhd.link", "dlhd.dad", "daddylive.mp", "dlhd.sx"];
-    const PROXIES = [
-        "https://api.allorigins.win/get?url=", 
-        "https://api.codetabs.com/v1/proxy?quest="
+    // CONFIG
+    const CONFIG = { 
+        DOMAIN: "dlhd.link", // Main domain for Player Links
+        PASS: "jeff"
+    };
+    
+    // We use a backup list of domains just for FETCHING the channel list 
+    // in case dlhd.link blocks the proxy.
+    const FETCH_DOMAINS = ["dlhd.link", "dlhd.dad", "daddylive.mp"];
+    
+    // The 6 exact prefixes you requested
+    const SOURCE_PREFIXES = [
+        { label: "Player 1 (Stream)", path: "stream" },
+        { label: "Player 2 (Cast)",   path: "cast" },
+        { label: "Player 3 (Watch)",  path: "watch" },
+        { label: "Player 4 (Plus)",   path: "plus" },
+        { label: "Player 5 (Casting)", path: "casting" },
+        { label: "Player 6 (Player)",  path: "player" }
     ];
-    
-    const PASSWORD = "jeff";
-    
-    // --- STATE ---
-    let currentDomainIndex = 0;
+
     let allChannels = [];
     let currentID = "";
+    let currentPath = "";
 
     // 1. Login
     function checkPassword() {
-        const input = document.getElementById('pass-input').value;
-        if (input.toLowerCase() === PASSWORD) {
+        if (document.getElementById('pass-input').value.toLowerCase() === CONFIG.PASS) {
             showScreen('list-screen');
-            initLoad();
-        } else {
-            alert("Access Denied");
-        }
+            loadChannels();
+        } else { alert("Access Denied"); }
     }
 
-    // 2. Load Channels (The Robust Way)
-    async function initLoad() {
-        updateStatus("Attempting to fetch channels...", "white");
+    // 2. Load Channels (Robust)
+    async function loadChannels() {
+        const status = document.getElementById('status-msg');
+        status.innerText = "Fetching channels...";
         
-        // Try current domain first
-        let success = await tryFetchDomain(DOMAINS[currentDomainIndex]);
-        
-        // If failed, loop through others
-        if (!success) {
-            for (let i = 0; i < DOMAINS.length; i++) {
-                if (i === currentDomainIndex) continue;
-                updateStatus(`dlhd.link blocked. Trying mirror: ${DOMAINS[i]}...`, "orange");
-                if (await tryFetchDomain(DOMAINS[i])) {
-                    currentDomainIndex = i;
+        let success = false;
+        // Try multiple domains to get the list
+        for (let domain of FETCH_DOMAINS) {
+            try {
+                const timestamp = new Date().getTime();
+                const target = `https://${domain}/24-7-channels.php?t=${timestamp}`;
+                const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
+                
+                const resp = await fetch(proxy);
+                const data = await resp.json();
+                
+                if (data.contents && data.contents.length > 500) {
+                    processHTML(data.contents);
+                    status.innerText = `Connected via ${domain}`;
+                    status.style.color = "#22c55e";
                     success = true;
-                    break;
+                    break; 
                 }
-            }
+            } catch (e) { console.log(`Failed to fetch from ${domain}`); }
         }
 
-        if (success) {
-            updateStatus(`Connected to ${DOMAINS[currentDomainIndex]}`, "status-ok");
-            document.getElementById('current-domain').innerText = DOMAINS[currentDomainIndex];
-        } else {
-            updateStatus("All mirrors failed. The proxy might be down.", "status-error");
-            document.getElementById('channel-grid').innerHTML = `
-                <div style="grid-column: 1/-1; color: #ef4444;">
-                    <h3>Connection Failed</h3>
-                    <p>The proxies are being blocked by the sports site.</p>
-                    <button onclick="initLoad()" style="margin-top:10px;">Retry</button>
-                </div>`;
+        if (!success) {
+            status.innerText = "Failed to load list. Proxy may be down.";
+            status.style.color = "#ef4444";
         }
     }
 
-    async function tryFetchDomain(domain) {
-        const timestamp = new Date().getTime();
-        const targetUrl = `https://${domain}/24-7-channels.php?t=${timestamp}`;
-        
-        // Try Proxy 1
-        try {
-            const data = await fetchWithProxy(targetUrl, 0);
-            if (processHTML(data)) return true;
-        } catch (e) { console.log(`Proxy 1 failed for ${domain}`); }
-
-        // Try Proxy 2 (Backup)
-        try {
-            const data = await fetchWithProxy(targetUrl, 1);
-            if (processHTML(data)) return true;
-        } catch (e) { console.log(`Proxy 2 failed for ${domain}`); }
-
-        return false;
-    }
-
-    async function fetchWithProxy(url, proxyIndex) {
-        const proxyUrl = PROXIES[proxyIndex] + encodeURIComponent(url);
-        const resp = await fetch(proxyUrl);
-        const data = await resp.json();
-        // Handle different proxy response formats
-        return data.contents || data.text || data; 
-    }
-
-    // 3. Process Data
     function processHTML(html) {
-        if (!html || html.length < 100) return false;
-        
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const tempChannels = [];
         
-        // Universal Selector: Finds any link with 'id=' or 'stream-'
         const links = doc.querySelectorAll('a');
-        
         links.forEach(link => {
             const href = link.getAttribute('href');
             if (!href) return;
-            
-            // Regex to catch id=55 OR stream-55.php
+
+            // Matches ?id=55 OR stream-55.php
             const match = href.match(/(?:id=|stream-)(\d+)/);
-            let name = link.getAttribute('data-title') || link.innerText.trim(); // Try data-title first
+            let name = link.getAttribute('data-title') || link.innerText.trim();
             
             if (match && name) {
-                // Clean up name
-                name = name.replace(/Live|Stream/gi, '').trim();
                 if (!tempChannels.find(c => c.id === match[1])) {
                     tempChannels.push({ id: match[1], name: name });
                 }
             }
         });
 
-        if (tempChannels.length > 5) { // Check if we actually got a decent list
+        if (tempChannels.length > 0) {
             allChannels = tempChannels.sort((a, b) => a.name.localeCompare(b.name));
             renderGrid(allChannels);
-            return true;
         }
-        return false;
     }
 
-    // 4. UI Functions
     function renderGrid(list) {
         document.getElementById('channel-grid').innerHTML = list.map(ch => `
-            <div class="card" onclick="openStream('${ch.id}')">${ch.name}</div>
+            <div class="card" onclick="selectChannel('${ch.id}', '${ch.name.replace(/'/g, "\\'")}')">
+                ${ch.name}
+            </div>
         `).join('');
     }
 
@@ -207,27 +180,30 @@
         renderGrid(allChannels.filter(c => c.name.toLowerCase().includes(q)));
     }
 
-    function cycleDomain() {
-        currentDomainIndex = (currentDomainIndex + 1) % DOMAINS.length;
-        initLoad();
-    }
-
-    function updateStatus(msg, type) {
-        const el = document.getElementById('status-msg');
-        el.innerText = msg;
-        el.className = type === "status-error" ? "status-error" : (type === "status-ok" ? "status-ok" : "");
-        el.style.color = type === "white" ? "#fff" : (type === "orange" ? "orange" : "");
-    }
-
-    // 5. Player Logic
-    function openStream(id) {
+    // 3. Select Channel & Show Sources
+    function selectChannel(id, name) {
         currentID = id;
-        showScreen('player-screen');
-        const activeDomain = DOMAINS[currentDomainIndex] || DOMAINS[0];
+        document.getElementById('target-name').innerText = name;
+        showScreen('source-screen');
         
-        // Using /embed/ is usually cleaner than /stream/
-        // If embed fails, you can switch this line to: `https://${activeDomain}/stream/stream-${id}.php`
-        const url = `https://${activeDomain}/embed/stream-${id}.php`;
+        // Generate the 6 buttons
+        const list = document.getElementById('source-list');
+        list.innerHTML = SOURCE_PREFIXES.map((src, index) => `
+            <button class="source-btn" onclick="startStream('${src.path}')">
+                ${src.label}
+                <span class="source-tag">LINK ${index + 1}</span>
+            </button>
+        `).join('');
+    }
+
+    // 4. Player Logic
+    function startStream(path) {
+        currentPath = path;
+        showScreen('player-screen');
+        
+        // Construct URL based on your specific requirements
+        // e.g. https://dlhd.link/cast/stream-38.php
+        const url = `https://${CONFIG.DOMAIN}/${path}/stream-${currentID}.php`;
         
         document.getElementById('iframe-wrapper').innerHTML = `
             <iframe 
@@ -240,12 +216,12 @@
     }
 
     function reloadStream() {
-        if(currentID) openStream(currentID);
+        if(currentID && currentPath) startStream(currentPath);
     }
 
     function closePlayer() {
         document.getElementById('iframe-wrapper').innerHTML = "";
-        showScreen('list-screen');
+        showScreen('source-screen');
     }
 
     function showScreen(id) {
