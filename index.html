@@ -39,7 +39,7 @@
             font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.5s;
         }
 
-        /* 20-Second Strobe Shield (From Original Script) */
+        /* Strobe Shield (Desktop Only) */
         #click-shield {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 100000; background: rgba(0,0,0,0.96);
@@ -400,7 +400,12 @@
         {name:"18+ (Player-20)",id:"520"}
     ];
 
-    // --- 3. LOGIC ---
+    // --- 3. HELPER: Detect Mobile Devices ---
+    function isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    // --- 4. LOGIC ---
     function checkPassword() {
         if (document.getElementById('pass-input').value.toLowerCase() === PASS) {
             showScreen('list-screen');
@@ -450,7 +455,23 @@
         const fill = document.getElementById('progress-fill');
         const timerTxt = document.getElementById('timer-text');
         const tip = document.getElementById('nav-tip');
-        
+        const container = document.getElementById('iframe-container');
+
+        // 1. Construct URL
+        const url = `https://${currentDomain}/${path}/stream-${selectedID}.php`;
+        container.innerHTML = `<iframe src="${url}" allowfullscreen scrolling="no" style="border:0; width:100%; height:100%;"></iframe>`;
+
+        // 2. CHECK: Is this Mobile?
+        if (isMobile()) {
+            // MOBILE MODE: HIDE THE SHIELD, JUST SHOW VIDEO
+            shield.style.display = 'none';
+            tip.style.display = 'none';
+            return; // Exit function, don't run the strobe logic
+        }
+
+        // 3. DESKTOP MODE: RUN STROBE LOGIC
+        shield.style.display = 'flex'; // Ensure shield is visible
+        tip.style.display = 'block';
         tip.style.opacity = "1";
         setTimeout(() => { tip.style.opacity = "0"; }, 4000);
 
@@ -458,13 +479,6 @@
         shield.classList.remove('strobe-open');
         document.getElementById('shield-ui').classList.remove('hidden');
         fill.style.width = "0%";
-        
-        // URL Construction
-        const url = `https://${currentDomain}/${path}/stream-${selectedID}.php`;
-        
-        document.getElementById('iframe-container').innerHTML = `
-            <iframe src="${url}" allowfullscreen scrolling="no" style="border:0; width:100%; height:100%;"></iframe>
-        `;
 
         let timeElapsed = 0;
         const totalDuration = 200; // 20 seconds
