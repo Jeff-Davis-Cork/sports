@@ -2,79 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=1024">
     <meta name="referrer" content="no-referrer">
     <title>Jeff's Sports & TV</title>
     <style>
         :root { --bg: #0a0f1e; --card: #161e35; --accent: #38bdf8; --text: #f8fafc; --danger: #ff4757; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; text-align: center; overflow-x: hidden; }
         .hidden { display: none !important; }
         
-        .container { max-width: 1100px; margin: 0 auto; padding: 15px; }
-        h1 { color: var(--accent); font-size: 2rem; margin-bottom: 10px; margin-top: 10px; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 10px;}
         
-        /* Mobile-Friendly Inputs */
+        /* Controls */
         input, select { 
-            width: 100%; box-sizing: border-box; padding: 15px; border-radius: 12px; 
+            width: 100%; max-width: 400px; padding: 15px; border-radius: 12px; 
             border: 2px solid #334155; background: #0f172a; color: white; 
-            font-size: 16px; /* Prevents iOS Auto-Zoom */
-            outline: none; margin-bottom: 10px; -webkit-appearance: none;
+            font-size: 1.1rem; outline: none; margin: 5px;
         }
-        
-        button { 
-            padding: 15px; width: 100%; max-width: 400px; 
-            background: var(--accent); color: #0a0f1e; border: none; 
-            border-radius: 12px; cursor: pointer; font-weight: bold; 
-            font-size: 1.1rem; transition: 0.2s; touch-action: manipulation;
-        }
-        button:active { transform: scale(0.98); opacity: 0.9; }
+        button { padding: 15px 30px; background: var(--accent); color: #0a0f1e; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: 0.2s; }
+        button:hover { transform: scale(1.05); }
 
-        /* Responsive Grid */
-        .grid { 
-            display: grid; gap: 10px; margin-top: 15px; 
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
-        }
-        
-        /* Force 2 columns on small mobile screens */
-        @media (max-width: 450px) {
-            .grid { grid-template-columns: 1fr 1fr; } 
-            .card { font-size: 0.75rem; padding: 10px; min-height: 50px; }
-            h1 { font-size: 1.8rem; }
-        }
+        /* Grid UI */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 20px; }
+        .card { background: var(--card); padding: 15px; border-radius: 10px; cursor: pointer; border: 1px solid #334155; font-weight: bold; transition: 0.2s; min-height: 50px; display: flex; align-items: center; justify-content: center; text-transform: uppercase; font-size: 0.8rem; }
+        .card:hover { border-color: var(--accent); background: #1e293b; }
 
-        .card { 
-            background: var(--card); padding: 15px; border-radius: 10px; cursor: pointer; 
-            border: 1px solid #334155; font-weight: bold; transition: 0.2s; 
-            min-height: 60px; display: flex; align-items: center; justify-content: center; 
-            text-transform: uppercase; font-size: 0.85rem; word-break: break-word;
-        }
-        .card:active { border-color: var(--accent); background: #1e293b; }
-
-        /* Mobile Player Screen (100dvh handles address bars better) */
-        #player-screen { position: fixed; inset: 0; width: 100%; height: 100dvh; background: #000; z-index: 9999; }
+        /* Full Screen Player */
+        #player-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; }
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* Floating Close Button for Mobile */
-        #mobile-close {
-            position: absolute; top: 15px; right: 15px; z-index: 100020;
-            background: rgba(255, 71, 87, 0.8); color: white; border-radius: 50%;
-            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 20px; border: 2px solid white; cursor: pointer;
+        /* Back Navigation Message */
+        #nav-tip {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 100010; background: rgba(0,0,0,0.8); color: #fff;
+            padding: 10px 20px; border-radius: 30px; border: 1px solid var(--accent);
+            font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.5s;
         }
 
-        /* Strobe Shield */
+        /* 20-Second Strobe Shield (From Original Script) */
         #click-shield {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 100000; background: rgba(0,0,0,0.92);
+            z-index: 100000; background: rgba(0,0,0,0.96);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            touch-action: none; /* Prevents scrolling while shield is active */
         }
-        #click-shield.strobe-open { background: transparent !important; pointer-events: none; }
+        #click-shield.strobe-open { background: transparent !important; border: 8px solid var(--accent); box-sizing: border-box; }
 
-        .instruction-box { background: rgba(10, 15, 30, 0.95); padding: 20px; border-radius: 20px; border: 2px solid var(--accent); max-width: 90%; }
-        .urgent-text { font-size: 1.5rem; color: #fff; font-weight: 900; animation: flash-accent 0.8s infinite; margin: 15px 0; }
+        .instruction-box { background: rgba(10, 15, 30, 0.95); padding: 30px; border-radius: 20px; border: 4px solid var(--accent); max-width: 90%; }
+        .urgent-text { font-size: 2rem; color: #fff; font-weight: 900; animation: flash-accent 0.8s infinite; margin: 20px 0; }
         
-        #progress-wrap { width: 100%; height: 10px; background: #222; border-radius: 10px; margin-top: 10px; overflow: hidden; }
+        #progress-wrap { width: 100%; height: 15px; background: #222; border-radius: 10px; margin-top: 10px; overflow: hidden; }
         #progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.1s linear; }
 
         @keyframes flash-accent {
@@ -82,21 +58,24 @@
             50% { color: var(--accent); transform: scale(1.03); }
         }
         
-        .mirror-select-container { margin-bottom: 15px; text-align: left; }
+        /* Mirror Select */
+        .mirror-select-container { margin-bottom: 20px; }
+        select { cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="login-screen" class="container">
-    <br><br><h1>Jeff's Sports</h1>
+    <br><br><h1>Jeff's Sports & TV</h1>
     <input type="password" id="pass-input" placeholder="Password..." onkeydown="if(event.key==='Enter') checkPassword()">
-    <br><br><button onclick="checkPassword()">Login</button>
+    <br><br><button onclick="checkPassword()">Let's Do This!</button>
 </div>
 
 <div id="list-screen" class="container hidden">
-    <h1>Channels</h1>
+    <h1>Jeff's Channels</h1>
     
     <div class="mirror-select-container">
+        <label style="color:#aaa; font-size:0.9rem;">Server Mirror:</label><br>
         <select id="mirror-select" onchange="updateMirror()">
             <option value="dlhd.link">Mirr 1: dlhd.link (Default)</option>
             <option value="daddylive.mp">Mirr 2: daddylive.mp</option>
@@ -105,27 +84,27 @@
         </select>
     </div>
 
-    <input type="text" id="search-bar" placeholder="🔍 Search channels..." onkeyup="filterChannels()">
+    <input type="text" id="search-bar" placeholder="🔍 Search 500+ channels..." onkeyup="filterChannels()">
     
     <div id="channel-grid" class="grid"></div>
 </div>
 
 <div id="source-screen" class="container hidden">
-    <button onclick="showScreen('list-screen')" style="background:#475569; color:white; margin-bottom: 20px;">← Back</button>
-    <h2 id="target-name" style="color: var(--accent); font-size: 1.5rem;"></h2>
+    <button onclick="showScreen('list-screen')" style="background:#475569; color:white;">← Back</button>
+    <h2 id="target-name" style="color: var(--accent); font-size: 2rem;"></h2>
     <div id="source-options"></div>
 </div>
 
 <div id="player-screen" class="hidden">
-    <div id="mobile-close" onclick="closePlayer()">✕</div>
+    <div id="nav-tip">Tip: Use your browser's BACK button to exit video</div>
     
-    <div id="click-shield" onpointerdown="manualTouch()">
+    <div id="click-shield" onclick="manualFlicker()">
         <div id="shield-ui" class="instruction-box">
-            <h2 style="color: var(--accent); margin: 0; font-size: 1.2rem;">AD BYPASS ACTIVE</h2>
+            <h2 style="color: var(--accent); margin: 0;">PROTECTION BYPASS</h2>
             <div id="progress-wrap"><div id="progress-fill"></div></div>
-            <div class="urgent-text">TAP HERE TO PLAY</div>
-            <h3 id="timer-text" style="color: #fff; font-size: 1rem;">20s remaining</h3>
-            <p style="font-size:0.75rem; color:#aaa;">(Rapidly tapping center screen works best)</p>
+            <div class="urgent-text">CLICK "PLAY" OR "UNMUTE" NOW!</div>
+            <h3 id="timer-text" style="color: #fff; font-size: 1.2rem;">20s remaining</h3>
+            <p style="font-size:0.8rem; color:#aaa;">(Clicking helps bypass the ads)</p>
         </div>
     </div>
     <div id="iframe-container" style="width:100%; height:100%;"></div>
@@ -137,7 +116,7 @@
     const PASS = "jeff";
     let selectedID = "";
 
-    // --- 2. DATABASE ---
+    // --- 2. THE MASSIVE DATABASE ---
     const DB = [
         {name:"ABC USA",id:"51"},{name:"AHC (American Heroes Channel)",id:"206"},{name:"Antenna TV USA",id:"283"},
         {name:"A&E USA",id:"302"},{name:"AMC USA",id:"303"},{name:"Animal Planet",id:"304"},
@@ -470,7 +449,11 @@
         const shield = document.getElementById('click-shield');
         const fill = document.getElementById('progress-fill');
         const timerTxt = document.getElementById('timer-text');
+        const tip = document.getElementById('nav-tip');
         
+        tip.style.opacity = "1";
+        setTimeout(() => { tip.style.opacity = "0"; }, 4000);
+
         shield.style.pointerEvents = "auto";
         shield.classList.remove('strobe-open');
         document.getElementById('shield-ui').classList.remove('hidden');
@@ -486,7 +469,6 @@
         let timeElapsed = 0;
         const totalDuration = 200; // 20 seconds
         
-        // SLOWER STROBE FOR MOBILE (Better Performance)
         const strobeInterval = setInterval(() => {
             timeElapsed++;
             fill.style.width = (timeElapsed / 2) + "%";
@@ -507,15 +489,20 @@
                 shield.classList.add('strobe-open');
                 document.getElementById('shield-ui').classList.add('hidden');
             }
-        }, 120); // Slightly slower than desktop to allow touch catch
+        }, 100);
     }
 
-    // Touch-Optimized Interaction
-    function manualTouch() {
+    function manualFlicker() {
         const shield = document.getElementById('click-shield');
-        shield.style.pointerEvents = "none"; // Immediately allow pass-through
-        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 300); // Re-enable after short delay
+        shield.style.pointerEvents = "none";
+        setTimeout(() => { shield.style.pointerEvents = "auto"; }, 200);
     }
+
+    window.onpopstate = function() {
+        if (!document.getElementById('player-screen').classList.contains('hidden')) {
+            closePlayer();
+        }
+    };
 
     function closePlayer() {
         document.getElementById('iframe-container').innerHTML = "";
